@@ -34,6 +34,8 @@ class TestBoard extends BoardPage
 
     public bool $nullSummary = false;
 
+    public bool $namedSummary = false;
+
     public bool $htmlLabel = false;
 
     public ?int $todoLimit = null;
@@ -66,6 +68,7 @@ class TestBoard extends BoardPage
                 : null)
             ->columnSummary(match (true) {
                 $this->nullSummary => fn (): ?string => null,
+                $this->namedSummary => fn ($query, Column $column): string => $column->getName() . ':' . $query->count(),
                 $this->withSummary => fn (Builder $columnQuery): string => $columnQuery->count() . ' shown',
                 default => null,
             })

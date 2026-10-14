@@ -32,3 +32,15 @@ test('a summary that returns null renders nothing', function () {
 test('a board without a summary renders nothing', function () {
     Livewire::test(TestBoard::class)->assertDontSeeHtml('ff-column-summary');
 });
+
+test('a summary closure receives the query by name and the column by type', function () {
+    Livewire::test(TestBoard::class, ['namedSummary' => true])
+        ->assertSeeHtml('ff-muted truncate text-sm">todo:2</span>')
+        ->assertSeeHtml('ff-muted truncate text-sm">in_progress:0</span>');
+});
+
+test('a collapsed column renders no summary and an expanded one does', function () {
+    Livewire::test(TestBoard::class, ['withSummary' => true, 'collapseEmpty' => true])
+        ->assertSeeHtml('ff-muted truncate text-sm">2 shown</span>')
+        ->assertDontSeeHtml('ff-muted truncate text-sm">0 shown</span>');
+});

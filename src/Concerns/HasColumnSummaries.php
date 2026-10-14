@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Relaticle\Flowforge\Concerns;
 
 use Closure;
+use Illuminate\Contracts\Database\Eloquent\Builder as BuilderContract;
 use Illuminate\Database\Eloquent\Builder;
 use Relaticle\Flowforge\Column;
 
@@ -33,8 +34,13 @@ trait HasColumnSummaries
 
         $summary = $this->evaluate(
             $this->columnSummary,
-            namedInjections: ['columnQuery' => $columnQuery, 'column' => $column],
-            typedInjections: [Builder::class => $columnQuery, Column::class => $column],
+            namedInjections: ['query' => $columnQuery, 'columnQuery' => $columnQuery, 'column' => $column],
+            typedInjections: [
+                BuilderContract::class => $columnQuery,
+                Builder::class => $columnQuery,
+                $columnQuery::class => $columnQuery,
+                Column::class => $column,
+            ],
         );
 
         return filled($summary) ? (string) $summary : null;

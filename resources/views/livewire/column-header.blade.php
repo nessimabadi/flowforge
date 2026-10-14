@@ -66,7 +66,7 @@
 
         <x-flowforge::column-count :column="$column" :columnId="$columnId" />
 
-        @if (filled($column['summary'] ?? null))
+        @if (! $isCollapsed && filled($column['summary'] ?? null))
             <span class="ff-column-summary ff-muted truncate text-sm">{{ $column['summary'] }}</span>
         @endif
     </div>
