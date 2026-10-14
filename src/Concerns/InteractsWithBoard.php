@@ -157,7 +157,7 @@ trait InteractsWithBoard
 
             $this->ensureBoardShowsColumn($targetColumnId);
             $laneMove = $this->resolveLaneMove($card, $fromLaneId, $toLaneId);
-            $this->authorizeCardMove($card, $targetColumnId, $toLaneId);
+            $this->authorizeCardMove($card, $targetColumnId, $laneMove !== null ? $laneMove[2]->getName() : null);
             $newPosition = $this->moveCardWithinLimit($card, $targetColumnId, $afterCardId, $beforeCardId, $laneMove);
         } catch (CardMoveRejectedException $exception) {
             Notification::make()->danger()->title($exception->getMessage())->send();
@@ -191,11 +191,13 @@ trait InteractsWithBoard
     {
         $grouping = $this->getBoard()->getActiveGrouping();
 
-        if ($grouping === null || $fromLaneId === $toLaneId) {
+        if ($grouping === null || ($fromLaneId === null && $toLaneId === null)) {
             return null;
         }
 
-        if (! $grouping->isWritable()) {
+        $sameLane = $fromLaneId === $toLaneId;
+
+        if (! $sameLane && ! $grouping->isWritable()) {
             throw CardMoveRejectedException::lanesReadOnly((string) $grouping->getLabel());
         }
 
@@ -212,7 +214,7 @@ trait InteractsWithBoard
             throw CardMoveRejectedException::unknownLane();
         }
 
-        return [$grouping, $from, $to];
+        return $sameLane ? null : [$grouping, $from, $to];
     }
 
     protected function persistCardMove(Model $card, mixed $columnValue, string $position): void
@@ -346,12 +348,25 @@ trait InteractsWithBoard
             $this->persistCardMove($card, $columnValue, $newPosition);
 
             if ($laneMove !== null) {
-                [$grouping, $from, $to] = $laneMove;
-                $grouping->moveCard($card, $from, $to);
+                $this->moveCardAcrossLanes($card, $laneMove);
             }
         });
 
         return $newPosition;
+    }
+
+    /**
+     * @param  array{0: Grouping, 1: Lane, 2: Lane}  $laneMove
+     */
+    protected function moveCardAcrossLanes(Model $card, array $laneMove): void
+    {
+        [$grouping, $from, $to] = $laneMove;
+
+        try {
+            $grouping->moveCard($card, $from, $to);
+        } catch (QueryException) {
+            throw CardMoveRejectedException::because(__('flowforge::flowforge.lane_write_failed'));
+        }
     }
 
     /**
@@ -418,6 +433,11 @@ trait InteractsWithBoard
         $lastException = null;
 
         for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
+            if ($attempt > 1) {
+                $card = (clone $this->getBoard()->getQuery())->whereKey($card->getKey())->first()
+                    ?? throw CardMoveRejectedException::unknownCard();
+            }
+
             try {
                 return $this->calculateAndUpdatePosition(
                     $card,

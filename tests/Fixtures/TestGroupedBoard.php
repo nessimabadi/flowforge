@@ -5,7 +5,11 @@ declare(strict_types=1);
 namespace Relaticle\Flowforge\Tests\Fixtures;
 
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use PDOException;
 use Relaticle\Flowforge\Board;
 use Relaticle\Flowforge\BoardPage;
 use Relaticle\Flowforge\Column;
@@ -24,6 +28,10 @@ class TestGroupedBoard extends BoardPage
     public bool $collapseEmpty = false;
 
     public ?int $inProgressLimit = null;
+
+    public bool $duplicateOnPersist = false;
+
+    public array $authorizedLanes = [];
 
     public function getEloquentQuery(): Builder
     {
@@ -57,6 +65,19 @@ class TestGroupedBoard extends BoardPage
                         Lane::make('high')->query(fn (Builder $query): Builder => $query->where('priority', 'high')),
                     ])
                     ->moveUsing(fn (Task $card) => $card->forceFill(['title' => (string) $card->status])->save()),
+                $this->assigneeGrouping('attach')
+                    ->moveUsing(fn (Task $card, Lane $to) => $card->assignees()->attach($to->getName())),
+                Grouping::make('flaky')
+                    ->label('Flaky')
+                    ->lanes(fn (): array => [
+                        Lane::make('low')->query(fn (Builder $query): Builder => $query->where('priority', 'low')),
+                        Lane::make('high')->query(fn (Builder $query): Builder => $query->where('priority', 'high')),
+                    ])
+                    ->moveUsing(function (): void {
+                        if (Cache::pull('flaky-lane-callback')) {
+                            throw new QueryException('sqlite', 'x', [], new PDOException('UNIQUE constraint failed'));
+                        }
+                    }),
                 Grouping::make('strict')
                     ->label('Strict')
                     ->lanes(fn (): array => [
@@ -67,9 +88,25 @@ class TestGroupedBoard extends BoardPage
             ]);
     }
 
-    protected function assigneeGrouping(): Grouping
+    protected function authorizeCardMove(Model $card, string $targetColumnId, ?string $toLaneId = null): void
     {
-        return Grouping::make('assignee')
+        $this->authorizedLanes[] = $toLaneId;
+    }
+
+    protected function persistCardMove(Model $card, mixed $columnValue, string $position): void
+    {
+        parent::persistCardMove($card, $columnValue, $position);
+
+        if ($this->duplicateOnPersist) {
+            $this->duplicateOnPersist = false;
+
+            throw new QueryException('sqlite', 'x', [], new PDOException('UNIQUE constraint failed'));
+        }
+    }
+
+    protected function assigneeGrouping(string $name = 'assignee'): Grouping
+    {
+        return Grouping::make($name)
             ->label('Assignee')
             ->lanes(fn (Builder $boardQuery): array => User::query()
                 ->whereIn('id', DB::table('task_user')->whereIn('task_id', (clone $boardQuery)->select('tasks.id'))->select('user_id'))

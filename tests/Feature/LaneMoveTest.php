@@ -2,7 +2,9 @@
 
 declare(strict_types=1);
 
+use Illuminate\Support\Facades\Cache;
 use Livewire\Livewire;
+use Relaticle\Flowforge\Grouping;
 use Relaticle\Flowforge\Tests\Fixtures\Task;
 use Relaticle\Flowforge\Tests\Fixtures\TestGroupedBoard;
 use Relaticle\Flowforge\Tests\Fixtures\User;
@@ -117,18 +119,90 @@ test('a limited column hands the lane callback the card it wrote', function () {
         ->title->toBe('in_progress');
 });
 
-test('a full limited column refuses a lane move before the callback runs', function () {
+test('a full limited column refuses a lane move and never runs the callback', function () {
     Task::create(['title' => 'Occupant', 'status' => 'in_progress', 'priority' => 'low', 'order_position' => '65535.0000000000']);
 
-    Livewire::test(TestGroupedBoard::class, ['groupBy' => 'priority', 'inProgressLimit' => 1])
+    Livewire::test(TestGroupedBoard::class, ['groupBy' => 'probe', 'inProgressLimit' => 1])
         ->call('moveCard', (string) $this->task->id, 'in_progress', null, null, 'low', 'high')
         ->assertNotified(__('flowforge::flowforge.column_full', ['column' => 'In Progress', 'limit' => 1]));
+
+    expect($this->task->fresh())
+        ->status->toBe('todo')
+        ->title->toBe('Proration preview');
+});
+
+test('lane ids are ignored while the board is not grouped', function () {
+    expect(groupedBoard('')->moveCard((string) $this->task->id, 'in_progress', null, null, 'a', 'b'))->toBeTrue()
+        ->and($this->task->fresh()->status)->toBe('in_progress');
+});
+
+test('a lane callback that violates a unique key is refused and the column move rolls back', function () {
+    $this->task->assignees()->attach([$this->emma->id, $this->chloe->id]);
+
+    Livewire::test(TestGroupedBoard::class, ['groupBy' => 'attach'])
+        ->call('moveCard', (string) $this->task->id, 'in_progress', null, null, (string) $this->emma->id, (string) $this->chloe->id)
+        ->assertNotified(__('flowforge::flowforge.lane_write_failed'));
+
+    expect($this->task->fresh()->status)->toBe('todo')
+        ->and($this->task->assignees()->pluck('users.id')->sort()->values()->all())
+        ->toBe(collect([$this->emma->id, $this->chloe->id])->sort()->values()->all());
+});
+
+test('a lane callback database error is refused instead of retried into a lost column write', function () {
+    Cache::put('flaky-lane-callback', true);
+
+    Livewire::test(TestGroupedBoard::class, ['groupBy' => 'flaky'])
+        ->call('moveCard', (string) $this->task->id, 'in_progress', null, null, 'low', 'high')
+        ->assertNotified(__('flowforge::flowforge.lane_write_failed'));
 
     expect($this->task->fresh())
         ->status->toBe('todo')
         ->priority->toBe('low');
 });
 
-test('lane ids are ignored while the board is not grouped', function () {
-    expect(groupedBoard('')->moveCard((string) $this->task->id, 'in_progress', null, null, 'a', 'b'))->toBeTrue();
+test('a retried position conflict writes the column move again', function () {
+    $board = groupedBoard('priority', ['duplicateOnPersist' => true]);
+
+    expect($board->moveCard((string) $this->task->id, 'in_progress', null, null, 'low', 'high'))->toBeTrue()
+        ->and($this->task->fresh())
+        ->status->toBe('in_progress')
+        ->priority->toBe('high');
+});
+
+test('a same-lane drop onto a lane that is not on the board is refused', function () {
+    Livewire::test(TestGroupedBoard::class, ['groupBy' => 'priority'])
+        ->call('moveCard', (string) $this->task->id, 'in_progress', null, null, 'ghost', 'ghost')
+        ->assertNotified(__('flowforge::flowforge.unknown_lane'));
+
+    expect($this->task->fresh()->status)->toBe('todo');
+});
+
+test('a same-lane drop from a lane the card is not in is refused', function () {
+    Livewire::test(TestGroupedBoard::class, ['groupBy' => 'priority'])
+        ->call('moveCard', (string) $this->task->id, 'in_progress', null, null, 'high', 'high')
+        ->assertNotified(__('flowforge::flowforge.unknown_lane'));
+
+    expect($this->task->fresh()->status)->toBe('todo');
+});
+
+test('a card moves into and out of the empty lane', function () {
+    $board = groupedBoard('assignee');
+
+    expect($board->moveCard((string) $this->task->id, 'todo', null, null, Grouping::EMPTY_LANE, (string) $this->chloe->id))->toBeTrue()
+        ->and($this->task->assignees()->pluck('users.id')->all())->toBe([$this->chloe->id]);
+
+    expect($board->moveCard((string) $this->task->id, 'todo', null, null, (string) $this->chloe->id, Grouping::EMPTY_LANE))->toBeTrue()
+        ->and($this->task->assignees()->count())->toBe(0);
+});
+
+test('the move authorization receives the resolved lane only when the lane changes', function () {
+    $grouped = groupedBoard('priority');
+    $grouped->moveCard((string) $this->task->id, 'todo', null, null, 'low', 'low');
+    $grouped->moveCard((string) $this->task->id, 'todo', null, null, 'low', 'high');
+
+    $ungrouped = groupedBoard('');
+    $ungrouped->moveCard((string) $this->task->id, 'in_progress', null, null, 'a', 'b');
+
+    expect($grouped->authorizedLanes)->toBe([null, 'high'])
+        ->and($ungrouped->authorizedLanes)->toBe([null]);
 });
