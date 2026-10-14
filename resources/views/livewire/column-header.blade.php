@@ -11,7 +11,13 @@
         ?->getClone()
         ->iconButton()
         ->icon('heroicon-m-plus')
-        ->label(__('flowforge::flowforge.add_card', ['card' => $this->getBoard()->getCardLabel()]));
+        ->label(__('flowforge::flowforge.add_card', ['card' => $this->getBoard()->getCardLabel()]))
+        ->disabled($column['isFull'] ?? false);
+
+    if ($column['isFull'] ?? false) {
+        $createAction?->tooltip(__('flowforge::flowforge.limit_reached'));
+    }
+
     $createAction = $createAction?->isVisible() ? $createAction : null;
 @endphp
 

@@ -7,6 +7,7 @@ namespace Relaticle\Flowforge\Tests\Fixtures;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Forms\Components\TextInput;
+use Illuminate\Auth\Access\Response;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\HtmlString;
 use Relaticle\Flowforge\Board;
@@ -26,6 +27,8 @@ class TestBoard extends BoardPage
     public bool $withCreateAction = false;
 
     public bool $hideCreateAction = false;
+
+    public bool $denyCreateAction = false;
 
     public bool $withSummary = false;
 
@@ -52,6 +55,8 @@ class TestBoard extends BoardPage
                 ? CreateAction::make('createTask')
                     ->model(Task::class)
                     ->visible(! $this->hideCreateAction)
+                    ->authorize(fn () => $this->denyCreateAction ? Response::deny('Not allowed') : true)
+                    ->authorizationTooltip()
                     ->schema([TextInput::make('title')->required()])
                     ->mutateDataUsing(fn (array $data, array $arguments): array => [
                         ...$data,

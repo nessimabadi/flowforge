@@ -1,12 +1,12 @@
 @props(['columnId', 'cardLabel', 'disabled' => false])
 
 @php
-    $createAction = $this->getBoardCreateCardAction($columnId);
+    $createAction = $this->getBoardCreateCardAction($columnId)?->disabled($disabled);
 @endphp
 
 @if ($createAction?->isVisible())
     @php
-        $isDisabled = $disabled || $createAction->isDisabled();
+        $isDisabled = $createAction->isDisabled();
     @endphp
     <button
         type="button"

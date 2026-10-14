@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Filament\Actions\Testing\TestAction;
+use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 use Relaticle\Flowforge\Tests\Fixtures\Task;
 use Relaticle\Flowforge\Tests\Fixtures\TestBoard;
@@ -23,6 +24,13 @@ function addRowButton(string $html, string $column): string
     }
 
     return '';
+}
+
+function headerButtons(string $html): array
+{
+    preg_match_all('/<button[^>]*fi-icon-btn[^>]*>/s', $html, $matches);
+
+    return $matches[0];
 }
 
 beforeEach(function () {
@@ -60,7 +68,7 @@ test('a full column refuses new cards', function () {
 
     expect($todoRow)->toMatch('/\sdisabled\s/')
         ->and($todoRow)->toContain('title="' . __('flowforge::flowforge.limit_reached') . '"')
-        ->and(addRowButton($component->html(), 'in_progress'))->not->toMatch('/\sdisabled\s/');
+        ->and(addRowButton($component->html(), 'in_progress'))->toContain('ff-add-row')->not->toMatch('/\sdisabled\s/');
 
     $component
         ->assertActionDisabled(TestAction::make('createTask')->arguments(['column' => 'todo']))
@@ -69,14 +77,55 @@ test('a full column refuses new cards', function () {
     expect(Task::where('title', 'Overflow')->exists())->toBeFalse();
 });
 
+test('a full column disables its header add button with a tooltip', function () {
+    $buttons = headerButtons(Livewire::test(TestBoard::class, ['todoLimit' => 2, 'withCreateAction' => true])->html());
+
+    expect($buttons)->toHaveCount(3)
+        ->and($buttons[0])->toContain('aria-disabled="true"')
+        ->and($buttons[0])->toContain('Limit reached')
+        ->and($buttons[1])->not->toContain('aria-disabled="true"')
+        ->and($buttons[1])->not->toContain('Limit reached')
+        ->and($buttons[2])->not->toContain('aria-disabled="true"');
+});
+
+test('a search that hides cards does not open a full column', function () {
+    $component = Livewire::test(TestBoard::class, ['todoLimit' => 2, 'withCreateAction' => true])
+        ->set('tableSearch', 'Alpha')
+        ->assertSeeHtml('data-column-total="2"')
+        ->assertActionDisabled(TestAction::make('createTask')->arguments(['column' => 'todo']))
+        ->callAction(TestAction::make('createTask')->arguments(['column' => 'todo']), ['title' => 'Sneaky']);
+
+    expect(Task::where('title', 'Sneaky')->exists())->toBeFalse()
+        ->and(addRowButton($component->html(), 'todo'))->toMatch('/\sdisabled\s/');
+});
+
+test('an unauthorized but visible create action keeps its add row disabled below the limit', function () {
+    $component = Livewire::test(TestBoard::class, ['todoLimit' => 3, 'withCreateAction' => true, 'denyCreateAction' => true]);
+
+    expect(addRowButton($component->html(), 'todo'))->toContain('ff-add-row')->toMatch('/\sdisabled\s/');
+});
+
 test('a column below its limit accepts new cards', function () {
     $component = Livewire::test(TestBoard::class, ['todoLimit' => 3, 'withCreateAction' => true]);
 
-    expect(addRowButton($component->html(), 'todo'))->not->toMatch('/\sdisabled\s/');
+    expect(addRowButton($component->html(), 'todo'))->toContain('ff-add-row')->not->toMatch('/\sdisabled\s/');
 
     $component
         ->assertActionEnabled(TestAction::make('createTask')->arguments(['column' => 'todo']))
         ->callAction(TestAction::make('createTask')->arguments(['column' => 'todo']), ['title' => 'Third']);
 
     expect(Task::where('title', 'Third')->value('status'))->toBe('todo');
+});
+
+test('a limited column is counted once per render', function () {
+    $component = Livewire::test(TestBoard::class, ['todoLimit' => 3, 'withCreateAction' => true]);
+
+    DB::enableQueryLog();
+    $component->call('$refresh');
+    $queries = collect(DB::getQueryLog())
+        ->pluck('query')
+        ->filter(fn (string $sql): bool => str_contains($sql, 'count(') && str_contains($sql, '"status" = ?'));
+    DB::disableQueryLog();
+
+    expect($queries)->toHaveCount(1);
 });
