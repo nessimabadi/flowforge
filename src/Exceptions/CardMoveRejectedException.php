@@ -21,6 +21,16 @@ final class CardMoveRejectedException extends FlowforgeException
         return new self(__('flowforge::flowforge.unknown_card'));
     }
 
+    public static function unknownLane(): self
+    {
+        return new self(__('flowforge::flowforge.unknown_lane'));
+    }
+
+    public static function lanesReadOnly(string $grouping): self
+    {
+        return new self(__('flowforge::flowforge.lanes_read_only', ['grouping' => $grouping]));
+    }
+
     public static function columnFull(string $column, int $limit): self
     {
         return new self(__('flowforge::flowforge.column_full', ['column' => $column, 'limit' => $limit]));

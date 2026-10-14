@@ -12,6 +12,8 @@ return [
     'limit_reached' => 'Límite alcanzado',
     'unknown_column' => 'Esa columna ya no está en el tablero. Recarga para ver lo último.',
     'unknown_card' => 'Esa tarjeta ya no está en el tablero. Recarga para ver lo último.',
+    'unknown_lane' => 'Ese carril ya no está en el tablero. Recarga para ver lo último.',
+    'lanes_read_only' => 'Las tarjetas no se pueden mover entre carriles de :grouping.',
     'column_full' => ':column alcanzó su límite de :limit.',
     'board_busy' => 'Otra tarjeta se está moviendo a :column. Inténtalo de nuevo.',
     'no_value' => 'Sin :attribute',

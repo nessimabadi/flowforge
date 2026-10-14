@@ -23,6 +23,8 @@ class TestGroupedBoard extends BoardPage
 
     public bool $collapseEmpty = false;
 
+    public ?int $inProgressLimit = null;
+
     public function getEloquentQuery(): Builder
     {
         return Task::query()->with('assignees');
@@ -42,12 +44,19 @@ class TestGroupedBoard extends BoardPage
             ->collapseEmptyColumns($this->collapseEmpty)
             ->columns([
                 Column::make('todo')->label('To Do'),
-                Column::make('in_progress')->label('In Progress'),
+                Column::make('in_progress')->label('In Progress')->limit($this->inProgressLimit),
             ])
             ->groupings([
                 Grouping::attribute('priority')->label('Priority'),
                 $this->assigneeGrouping(),
                 $this->creatorGrouping(),
+                Grouping::make('probe')
+                    ->label('Probe')
+                    ->lanes(fn (): array => [
+                        Lane::make('low')->query(fn (Builder $query): Builder => $query->where('priority', 'low')),
+                        Lane::make('high')->query(fn (Builder $query): Builder => $query->where('priority', 'high')),
+                    ])
+                    ->moveUsing(fn (Task $card) => $card->forceFill(['title' => (string) $card->status])->save()),
                 Grouping::make('strict')
                     ->label('Strict')
                     ->lanes(fn (): array => [

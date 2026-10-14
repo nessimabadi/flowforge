@@ -12,6 +12,8 @@ return [
     'limit_reached' => 'Limiet bereikt',
     'unknown_column' => 'Die kolom staat niet meer op het bord. Herlaad om de laatste stand te zien.',
     'unknown_card' => 'Die kaart staat niet meer op het bord. Herlaad om de laatste stand te zien.',
+    'unknown_lane' => 'Die baan staat niet meer op het bord. Herlaad om de laatste stand te zien.',
+    'lanes_read_only' => 'Kaarten kunnen niet tussen :grouping-banen worden verplaatst.',
     'column_full' => ':column heeft de limiet van :limit bereikt.',
     'board_busy' => 'Er wordt al een kaart naar :column verplaatst. Probeer het opnieuw.',
     'no_value' => 'Zonder :attribute',

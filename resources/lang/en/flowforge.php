@@ -12,6 +12,8 @@ return [
     'limit_reached' => 'Limit reached',
     'unknown_column' => 'That column is no longer on the board. Reload to see the latest.',
     'unknown_card' => 'That card is no longer on the board. Reload to see the latest.',
+    'unknown_lane' => 'That lane is no longer on the board. Reload to see the latest.',
+    'lanes_read_only' => 'Cards cannot move between :grouping lanes.',
     'column_full' => ':column is at its limit of :limit.',
     'board_busy' => 'Another card is moving into :column. Try again.',
     'no_value' => 'No :attribute',

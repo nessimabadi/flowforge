@@ -21,6 +21,8 @@ use Livewire\Attributes\Url;
 use Relaticle\Flowforge\Board;
 use Relaticle\Flowforge\Exceptions\CardMoveRejectedException;
 use Relaticle\Flowforge\Exceptions\MaxRetriesExceededException;
+use Relaticle\Flowforge\Grouping;
+use Relaticle\Flowforge\Lane;
 use Relaticle\Flowforge\Services\DecimalPosition;
 use Relaticle\Flowforge\Services\PositionRebalancer;
 
@@ -141,6 +143,8 @@ trait InteractsWithBoard
         string $targetColumnId,
         ?string $afterCardId = null,
         ?string $beforeCardId = null,
+        ?string $fromLaneId = null,
+        ?string $toLaneId = null,
     ): bool {
         $query = $this->getBoard()->getQuery();
 
@@ -152,8 +156,9 @@ trait InteractsWithBoard
             $card = (clone $query)->find($cardId) ?? throw CardMoveRejectedException::unknownCard();
 
             $this->ensureBoardShowsColumn($targetColumnId);
-            $this->authorizeCardMove($card, $targetColumnId);
-            $newPosition = $this->moveCardWithinLimit($card, $targetColumnId, $afterCardId, $beforeCardId);
+            $laneMove = $this->resolveLaneMove($card, $fromLaneId, $toLaneId);
+            $this->authorizeCardMove($card, $targetColumnId, $toLaneId);
+            $newPosition = $this->moveCardWithinLimit($card, $targetColumnId, $afterCardId, $beforeCardId, $laneMove);
         } catch (CardMoveRejectedException $exception) {
             Notification::make()->danger()->title($exception->getMessage())->send();
             $this->skipRender();
@@ -177,7 +182,38 @@ trait InteractsWithBoard
         }
     }
 
-    protected function authorizeCardMove(Model $card, string $targetColumnId): void {}
+    protected function authorizeCardMove(Model $card, string $targetColumnId, ?string $toLaneId = null): void {}
+
+    /**
+     * @return array{0: Grouping, 1: Lane, 2: Lane}|null
+     */
+    protected function resolveLaneMove(Model $card, ?string $fromLaneId, ?string $toLaneId): ?array
+    {
+        $grouping = $this->getBoard()->getActiveGrouping();
+
+        if ($grouping === null || $fromLaneId === $toLaneId) {
+            return null;
+        }
+
+        if (! $grouping->isWritable()) {
+            throw CardMoveRejectedException::lanesReadOnly((string) $grouping->getLabel());
+        }
+
+        $query = $this->getBoard()->getQuery();
+        $lanes = collect($grouping->getLanes(clone $query))->keyBy(fn (Lane $lane): string => $lane->getName());
+        $from = $lanes->get($fromLaneId);
+        $to = $lanes->get($toLaneId);
+
+        if ($from === null || $to === null) {
+            throw CardMoveRejectedException::unknownLane();
+        }
+
+        if (! $from->applyQuery(clone $query)->whereKey($card->getKey())->exists()) {
+            throw CardMoveRejectedException::unknownLane();
+        }
+
+        return [$grouping, $from, $to];
+    }
 
     protected function persistCardMove(Model $card, mixed $columnValue, string $position): void
     {
@@ -194,13 +230,14 @@ trait InteractsWithBoard
         string $targetColumnId,
         ?string $afterCardId,
         ?string $beforeCardId,
+        ?array $laneMove = null,
     ): string {
         $board = $this->getBoard();
         $column = $board->getColumn($targetColumnId);
         $limit = $column?->getLimit();
 
         if ($column === null || $limit === null) {
-            return $this->calculateAndUpdatePositionWithRetry($card, $targetColumnId, $afterCardId, $beforeCardId);
+            return $this->calculateAndUpdatePositionWithRetry($card, $targetColumnId, $afterCardId, $beforeCardId, laneMove: $laneMove);
         }
 
         $columnLabel = (string) ($column->getLabel() ?? $targetColumnId);
@@ -220,7 +257,7 @@ trait InteractsWithBoard
                 throw CardMoveRejectedException::columnFull($columnLabel, $limit);
             }
 
-            return $this->calculateAndUpdatePositionWithRetry($freshCard, $targetColumnId, $afterCardId, $beforeCardId);
+            return $this->calculateAndUpdatePositionWithRetry($freshCard, $targetColumnId, $afterCardId, $beforeCardId, laneMove: $laneMove);
         } finally {
             $lock->release();
         }
@@ -253,11 +290,12 @@ trait InteractsWithBoard
         Model $card,
         string $targetColumnId,
         ?string $afterCardId,
-        ?string $beforeCardId
+        ?string $beforeCardId,
+        ?array $laneMove = null,
     ): string {
         $newPosition = '';
 
-        DB::transaction(function () use ($card, $targetColumnId, $afterCardId, $beforeCardId, &$newPosition) {
+        DB::transaction(function () use ($card, $targetColumnId, $afterCardId, $beforeCardId, $laneMove, &$newPosition) {
             $board = $this->getBoard();
             $query = $board->getQuery();
             $positionField = $board->getPositionIdentifierAttribute();
@@ -306,6 +344,11 @@ trait InteractsWithBoard
             $columnValue = $this->resolveStatusValue($card, $columnField, $targetColumnId);
 
             $this->persistCardMove($card, $columnValue, $newPosition);
+
+            if ($laneMove !== null) {
+                [$grouping, $from, $to] = $laneMove;
+                $grouping->moveCard($card, $from, $to);
+            }
         });
 
         return $newPosition;
@@ -368,7 +411,8 @@ trait InteractsWithBoard
         string $targetColumnId,
         ?string $afterCardId,
         ?string $beforeCardId,
-        int $maxAttempts = 3
+        int $maxAttempts = 3,
+        ?array $laneMove = null,
     ): string {
         $baseDelay = 50; // milliseconds
         $lastException = null;
@@ -379,7 +423,8 @@ trait InteractsWithBoard
                     $card,
                     $targetColumnId,
                     $afterCardId,
-                    $beforeCardId
+                    $beforeCardId,
+                    $laneMove,
                 );
             } catch (QueryException $e) {
                 // Check if this is a unique constraint violation

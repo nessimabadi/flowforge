@@ -93,7 +93,7 @@ class TestBoard extends BoardPage
             ]);
     }
 
-    protected function authorizeCardMove(Model $card, string $targetColumnId): void
+    protected function authorizeCardMove(Model $card, string $targetColumnId, ?string $toLaneId = null): void
     {
         abort_if($card->getAttribute('title') === $this->denyMovesFor, 403);
     }
