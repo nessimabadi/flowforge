@@ -30,7 +30,7 @@ describe('card labels', function () {
         Filament::setCurrentPanel(Panel::make()->id('labels')->resources([$resource::class]));
 
         $component = Livewire::test(TestStandaloneBoard::class)
-            ->assertSee('No support tickets in this column');
+            ->assertSeeHtml('aria-label="To Do, 0 Support tickets"');
 
         $board = $component->instance()->getBoard();
 
@@ -54,10 +54,10 @@ describe('card labels', function () {
             ->and($board->getPluralCardLabel())->toBe(__('flowforge::flowforge.plural_card_label'));
     });
 
-    test('the empty column names the cards', function () {
+    test('the column tray names the cards', function () {
         Livewire::test(TestBoard::class)
             ->assertStatus(200)
-            ->assertSee('No tasks in this column');
+            ->assertSeeHtml('aria-label="To Do, 0 Tasks"');
     });
 
     test('serializes custom labels safely into the rendered board', function (string $label): void {
@@ -90,11 +90,11 @@ describe('card labels', function () {
             during: function (): void {
                 app()->setLocale('de');
 
-                Livewire::test(TestBoard::class)->assertSee('Keine Datensätze in dieser Spalte');
+                Livewire::test(TestBoard::class)->assertSeeHtml('aria-label="To Do, 0 Datensätze"');
 
                 app()->setLocale('es');
 
-                Livewire::test(TestBoard::class)->assertSee('No hay registros en esta columna');
+                Livewire::test(TestBoard::class)->assertSeeHtml('aria-label="To Do, 0 Registros"');
             },
         );
     });

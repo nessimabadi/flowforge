@@ -57,8 +57,8 @@ test('package translations are available', function () {
     expect(__('flowforge::flowforge.loading_more_cards'))
         ->toBe('Loading more cards...');
 
-    expect(__('flowforge::flowforge.no_cards_in_column', ['cardLabel' => 'tasks']))
-        ->toBe('No tasks in this column');
+    expect(__('flowforge::flowforge.column_label', ['column' => 'To Do', 'count' => 2, 'cards' => 'tasks']))
+        ->toBe('To Do, 2 tasks');
 });
 
 test('package script data is configured', function () {

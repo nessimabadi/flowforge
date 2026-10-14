@@ -91,7 +91,7 @@ class FlowforgeServiceProvider extends PackageServiceProvider
         // Manually register components that don't have a class
         Blade::component('flowforge::livewire.board', 'flowforge::board');
         Blade::component('flowforge::livewire.column', 'flowforge::column');
-        Blade::component('flowforge::livewire.empty-column', 'flowforge::empty-column');
+        Blade::component('flowforge::livewire.column-header', 'flowforge::column-header');
         Blade::component('flowforge::livewire.card', 'flowforge::card');
         Blade::component('flowforge::livewire.column-count', 'flowforge::column-count');
     }

@@ -2,7 +2,7 @@
 @props(['columns', 'config'])
 
 <div
-    class="w-full h-full flex flex-col relative"
+    class="ff-board w-full h-full flex flex-col relative"
     x-load
     x-load-src="{{ FilamentAsset::getAlpineComponentSrc('flowforge', package: 'relaticle/flowforge') }}"
     x-data="flowforge({

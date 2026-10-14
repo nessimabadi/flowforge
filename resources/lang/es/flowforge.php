@@ -2,7 +2,7 @@
 
 return [
     'loading_more_cards' => 'Cargando más tarjetas...',
-    'no_cards_in_column' => 'No hay :cardLabel en esta columna',
+    'column_label' => ':column, :count :cards',
     'cards_count' => '{0} :cards|{1} :card|[2,*] :cards',
     'card_label' => 'Registro',
     'plural_card_label' => 'Registros',
