@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use Filament\Support\Assets\Css;
+use Filament\Support\Facades\FilamentAsset;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Blade;
 use Relaticle\Flowforge\Board;
@@ -32,8 +34,8 @@ test('package assets are defined', function () {
     $method->setAccessible(true);
     $assets = $method->invoke($serviceProvider);
 
-    expect($assets)->toHaveCount(1); // Only JS asset exists now
-    expect($assets[0]->getId())->toBe('flowforge');
+    expect($assets)->toHaveCount(2);
+    expect(collect($assets)->map(fn ($asset): string => $asset->getId())->all())->toBe(['flowforge', 'flowforge']);
 });
 
 test('blade component namespace is registered', function () {
@@ -88,4 +90,12 @@ test('core classes exist and are autoloadable', function () {
     expect(class_exists(BoardPage::class))->toBeTrue();
     expect(class_exists(Column::class))->toBeTrue();
     expect(class_exists(MakeKanbanBoardCommand::class))->toBeTrue();
+});
+
+test('registers the board stylesheet as a filament asset', function () {
+    $styleIds = collect(FilamentAsset::getStyles(['relaticle/flowforge']))
+        ->map(fn (Css $asset): string => $asset->getId())
+        ->all();
+
+    expect($styleIds)->toContain('flowforge');
 });

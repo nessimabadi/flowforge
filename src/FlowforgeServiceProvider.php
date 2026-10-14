@@ -4,6 +4,7 @@ namespace Relaticle\Flowforge;
 
 use Filament\Support\Assets\AlpineComponent;
 use Filament\Support\Assets\Asset;
+use Filament\Support\Assets\Css;
 use Filament\Support\Facades\FilamentAsset;
 use Filament\Support\Facades\FilamentIcon;
 use Illuminate\Database\Schema\Blueprint;
@@ -107,6 +108,7 @@ class FlowforgeServiceProvider extends PackageServiceProvider
     {
         return [
             AlpineComponent::make('flowforge', __DIR__ . '/../resources/dist/flowforge.js'),
+            Css::make('flowforge', __DIR__ . '/../resources/css/flowforge.css'),
         ];
     }
 
