@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
+use Livewire\Attributes\Url;
 use Relaticle\Flowforge\Board;
 use Relaticle\Flowforge\Exceptions\CardMoveRejectedException;
 use Relaticle\Flowforge\Exceptions\MaxRetriesExceededException;
@@ -32,6 +33,9 @@ trait InteractsWithBoard
      * Cards per column pagination state.
      */
     public array $columnCardLimits = [];
+
+    #[Url(as: 'groupBy')]
+    public ?string $groupBy = null;
 
     /**
      * Loading states for columns.

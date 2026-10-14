@@ -10,6 +10,7 @@ use Relaticle\Flowforge\Concerns\CanSearchBoardRecords;
 use Relaticle\Flowforge\Concerns\HasBoardActions;
 use Relaticle\Flowforge\Concerns\HasBoardColumns;
 use Relaticle\Flowforge\Concerns\HasBoardFilters;
+use Relaticle\Flowforge\Concerns\HasBoardGroupings;
 use Relaticle\Flowforge\Concerns\HasBoardRecords;
 use Relaticle\Flowforge\Concerns\HasCardLabels;
 use Relaticle\Flowforge\Concerns\HasCardSchema;
@@ -24,6 +25,7 @@ class Board extends ViewComponent
     use HasBoardActions;
     use HasBoardColumns;
     use HasBoardFilters;
+    use HasBoardGroupings;
     use HasBoardRecords;
     use HasCardLabels;
     use HasCardSchema;
