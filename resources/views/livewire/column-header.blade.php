@@ -7,6 +7,11 @@
     $actions = $this->getBoardColumnActions($columnId);
     $dotColor = ColorResolver::resolve($column['color'] ?? null);
     $isOpen = 'dragOverColumn === '.json_encode($columnId);
+    $createAction = $this->getBoardCreateCardAction($columnId)
+        ?->getClone()
+        ->iconButton()
+        ->icon('heroicon-m-plus')
+        ->label(__('flowforge::flowforge.add_card', ['card' => $this->getBoard()->getCardLabel()]));
 @endphp
 
 <div
@@ -55,11 +60,13 @@
         <x-flowforge::column-count :column="$column" :columnId="$columnId" />
     </div>
 
-    @if(count($actions) > 0)
-        <div class="shrink-0">
+    @if($createAction || count($actions) > 0)
+        <div class="flex shrink-0 items-center gap-1">
+            {{ $createAction }}
+
             @if(count($actions) === 1)
                 {{ $actions[0] }}
-            @else
+            @elseif(count($actions) > 1)
                 <x-filament-actions::group :actions="$actions" />
             @endif
         </div>

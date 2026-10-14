@@ -68,6 +68,30 @@ trait InteractsWithBoard
                 $this->cacheAction($action);
             }
         }
+
+        $createCardAction = $board->getCreateCardAction();
+
+        if ($createCardAction instanceof Action) {
+            $this->cacheAction(
+                $createCardAction->disabled(fn (array $arguments): bool => ! $this->canCreateCardIn($arguments['column'] ?? null)),
+            );
+        }
+    }
+
+    public function getBoardCreateCardAction(string $columnId): ?Action
+    {
+        $action = $this->getBoard()->getCreateCardAction();
+
+        return $action ? $action(['column' => $columnId])->livewire($this) : null;
+    }
+
+    protected function canCreateCardIn(?string $columnId): bool
+    {
+        if ($columnId === null) {
+            return true;
+        }
+
+        return in_array($columnId, $this->getBoard()->getColumnIdentifiers(), true);
     }
 
     protected function makeBoard(): Board

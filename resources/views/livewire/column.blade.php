@@ -78,5 +78,11 @@
                 </div>
             @endif
         </div>
+
+        @unless($isCollapsed)
+            <div class="px-2 pb-2">
+                <x-flowforge::add-card-row :columnId="$columnId" :cardLabel="$config['cardLabel']" />
+            </div>
+        @endunless
     </div>
 </div>

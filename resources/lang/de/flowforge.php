@@ -8,4 +8,5 @@ return [
     'plural_card_label' => 'Datensätze',
     'cards_pagination' => ':current von :total :cards',
     'all_cards_loaded' => 'Alle :total :cards geladen',
+    'add_card' => ':card hinzufügen',
 ];

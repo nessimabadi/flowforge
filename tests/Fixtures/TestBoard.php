@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Relaticle\Flowforge\Tests\Fixtures;
 
 use Filament\Actions\Action;
+use Filament\Actions\CreateAction;
+use Filament\Forms\Components\TextInput;
 use Illuminate\Database\Eloquent\Builder;
 use Relaticle\Flowforge\Board;
 use Relaticle\Flowforge\BoardPage;
@@ -20,6 +22,8 @@ class TestBoard extends BoardPage
 
     public bool $withHeaderToolbar = false;
 
+    public bool $withCreateAction = false;
+
     public function getEloquentQuery(): Builder
     {
         return Task::query();
@@ -33,6 +37,16 @@ class TestBoard extends BoardPage
             ->query($this->getEloquentQuery())
             ->recordTitleAttribute('title')
             ->searchable(['title'])
+            ->createCardAction($this->withCreateAction
+                ? CreateAction::make('createTask')
+                    ->model(Task::class)
+                    ->schema([TextInput::make('title')->required()])
+                    ->mutateDataUsing(fn (array $data, array $arguments): array => [
+                        ...$data,
+                        'status' => $arguments['column'] ?? 'todo',
+                        'order_position' => '65535.0000000000',
+                    ])
+                : null)
             ->columnIdentifier('status')
             ->positionIdentifier('order_position')
             ->columns([

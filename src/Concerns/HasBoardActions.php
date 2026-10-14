@@ -28,6 +28,8 @@ trait HasBoardActions
      */
     protected array $columnActions = [];
 
+    protected ?Action $createCardAction = null;
+
     protected ?string $cardAction = null;
 
     protected array $registeredCardActions = [];
@@ -70,6 +72,18 @@ trait HasBoardActions
         $this->cardAction = $this->evaluate($action);
 
         return $this;
+    }
+
+    public function createCardAction(Action | Closure | null $action): static
+    {
+        $this->createCardAction = $this->evaluate($action);
+
+        return $this;
+    }
+
+    public function getCreateCardAction(): ?Action
+    {
+        return $this->createCardAction;
     }
 
     /**

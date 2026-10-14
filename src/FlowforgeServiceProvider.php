@@ -94,6 +94,7 @@ class FlowforgeServiceProvider extends PackageServiceProvider
         Blade::component('flowforge::livewire.column-header', 'flowforge::column-header');
         Blade::component('flowforge::livewire.card', 'flowforge::card');
         Blade::component('flowforge::livewire.column-count', 'flowforge::column-count');
+        Blade::component('flowforge::livewire.add-card-row', 'flowforge::add-card-row');
     }
 
     protected function getAssetPackageName(): ?string
