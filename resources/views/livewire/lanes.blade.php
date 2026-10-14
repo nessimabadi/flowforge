@@ -20,6 +20,10 @@
                     data-column-root="{{ $columnId }}"
                     data-column-total="{{ $column['limitTotal'] ?? $column['total'] }}"
                     @if (($column['limit'] ?? null) !== null) data-column-limit="{{ $column['limit'] }}" @endif
+                    x-bind:class="{
+                        'ff-column--active': dragOverColumn === @js($columnId) && ! isColumnBlocked(@js($columnId)),
+                        'ff-column--blocked': dragOverColumn === @js($columnId) && isColumnBlocked(@js($columnId)),
+                    }"
                     wire:key="lane-header-{{ $columnId }}"
                 >
                     <x-flowforge::column-header :columnId="$columnId" :column="$column" />
@@ -46,7 +50,14 @@
             @foreach ($columns as $columnId => $column)
                 @php $cell = $lane['cells'][$columnId] ?? ['items' => [], 'total' => 0]; @endphp
 
-                <div class="ff-tray flex min-h-24 flex-col p-2" wire:key="cell-{{ $lane['id'] }}-{{ $columnId }}">
+                <div
+                    class="ff-tray flex min-h-24 flex-col p-2"
+                    x-bind:class="{
+                        'ff-cell--active': dragOverColumn === @js($columnId) && dragOverLane === @js($lane['id']) && ! isCellBlocked(@js($columnId), @js($lane['id'])),
+                        'ff-cell--blocked': dragOverColumn === @js($columnId) && dragOverLane === @js($lane['id']) && isCellBlocked(@js($columnId), @js($lane['id'])),
+                    }"
+                    wire:key="cell-{{ $lane['id'] }}-{{ $columnId }}"
+                >
                     <div
                         class="flowforge-column-content min-h-16 flex-1"
                         data-column-id="{{ $columnId }}"
@@ -54,7 +65,8 @@
                         @if ($isSortable)
                             x-sortable
                             x-sortable-group="cards"
-                            @end.stop="dragOverColumn = null; handleSortableEnd($event)"
+                            @end.stop="handleSortableEnd($event)"
+                            x-init="$nextTick(() => configureSortable($el))"
                         @endif
                     >
                         @foreach ($cell['items'] as $record)

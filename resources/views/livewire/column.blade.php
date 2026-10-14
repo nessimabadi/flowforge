@@ -24,14 +24,15 @@
     data-column-root="{{ $columnId }}"
     data-column-total="{{ $column['limitTotal'] ?? $total }}"
     @if (($column['limit'] ?? null) !== null) data-column-limit="{{ $column['limit'] }}" @endif
-    x-on:dragenter="dragOverColumn = @js($columnId)"
-    @if($isCollapsed)
-        title="{{ $plainLabel }}"
-        x-bind:class="{
+    @if($isCollapsed) title="{{ $plainLabel }}" @endif
+    x-bind:class="{
+        @if($isCollapsed)
             'w-12 min-w-12': ! ({{ $isOpen }}),
             'w-[300px] min-w-[300px]': {{ $isOpen }},
-        }"
-    @endif
+        @endif
+        'ff-column--active': ({{ $isOpen }}) && ! isColumnBlocked(@js($columnId)),
+        'ff-column--blocked': ({{ $isOpen }}) && isColumnBlocked(@js($columnId)),
+    }"
 >
     <x-flowforge::column-header :columnId="$columnId" :column="$column" :isCollapsed="$isCollapsed" />
 
@@ -40,13 +41,21 @@
         role="region"
         aria-label="{{ $trayLabel }}"
     >
+        @if (($column['limit'] ?? null) !== null)
+            <p
+                x-cloak
+                x-show="({{ $isOpen }}) && isColumnBlocked(@js($columnId))"
+                class="ff-limit-hint px-3 pt-2 text-xs font-medium"
+            >{{ __('flowforge::flowforge.limit_reached') }}</p>
+        @endif
+
         <div
             data-column-id="{{ $columnId }}"
             @if($this->getBoard()->getPositionIdentifierAttribute())
                 x-sortable
                 x-sortable-group="cards"
-                @dragenter="dragOverColumn = @js($columnId)"
-                @end.stop="dragOverColumn = null; handleSortableEnd($event)"
+                @end.stop="handleSortableEnd($event)"
+                x-init="$nextTick(() => configureSortable($el))"
             @endif
             @if(isset($column['total']) && $column['total'] > count($column['items']))
                 @scroll.throttle.100ms="handleColumnScroll($event, '{{ $columnId }}')"

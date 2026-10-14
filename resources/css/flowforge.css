@@ -102,3 +102,51 @@
         opacity: 1;
     }
 }
+
+.ff-card-dragging {
+    rotate: 2.5deg;
+    scale: 1.02;
+    opacity: 1 !important;
+    cursor: grabbing;
+    box-shadow:
+        0 0 0 1px var(--ff-card-ring),
+        0 10px 15px -3px rgb(0 0 0 / 0.1),
+        0 4px 6px -4px rgb(0 0 0 / 0.1);
+}
+
+.ff-card-placeholder {
+    background-color: transparent !important;
+    box-shadow: none !important;
+    outline: 1.5px dashed var(--ff-accent);
+    outline-offset: -1.5px;
+}
+
+.ff-card-placeholder > * {
+    visibility: hidden;
+}
+
+.ff-column--active .ff-tray,
+.ff-cell--active {
+    background-color: var(--ff-accent-tint);
+    box-shadow: inset 0 0 0 1px var(--ff-accent);
+}
+
+.ff-column--blocked .ff-tray,
+.ff-cell--blocked {
+    box-shadow: inset 0 0 0 1px var(--ff-danger);
+}
+
+.ff-limit-hint {
+    color: var(--ff-danger);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ff-card-dragging {
+        rotate: none;
+        scale: none;
+    }
+
+    .ff-card-actions {
+        transition: none;
+    }
+}
