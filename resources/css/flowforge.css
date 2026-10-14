@@ -1,4 +1,5 @@
 :where(.ff-board) {
+    --ff-board-bg: var(--gray-50);
     --ff-tray-bg: var(--gray-50);
     --ff-card-bg: #fff;
     --ff-card-ring: color-mix(in oklab, var(--gray-950) 5%, transparent);
@@ -12,6 +13,7 @@
 }
 
 :where(.dark .ff-board) {
+    --ff-board-bg: var(--gray-950);
     --ff-tray-bg: color-mix(in oklab, #fff 5%, transparent);
     --ff-card-bg: var(--gray-900);
     --ff-card-ring: color-mix(in oklab, #fff 10%, transparent);

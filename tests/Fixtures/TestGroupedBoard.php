@@ -19,6 +19,10 @@ class TestGroupedBoard extends BoardPage
 
     public int $cardsPerCell = 20;
 
+    public bool $withHeaderToolbar = false;
+
+    public bool $collapseEmpty = false;
+
     public function getEloquentQuery(): Builder
     {
         return Task::query()->with('assignees');
@@ -34,6 +38,8 @@ class TestGroupedBoard extends BoardPage
             ->positionIdentifier('order_position')
             ->cardsPerColumn($this->cardsPerCell)
             ->lanesPerPage($this->lanesPerPage)
+            ->headerToolbar($this->withHeaderToolbar)
+            ->collapseEmptyColumns($this->collapseEmpty)
             ->columns([
                 Column::make('todo')->label('To Do'),
                 Column::make('in_progress')->label('In Progress'),

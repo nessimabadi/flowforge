@@ -21,7 +21,9 @@
         @include('flowforge::components.filters')
     @endunless
 
-    <x-flowforge::grouping-picker :groupings="$groupings" />
+    @unless ($config['headerToolbar'] ?? false)
+        <x-flowforge::grouping-picker :groupings="$groupings" class="pb-3" />
+    @endunless
 
     <!-- Board Content -->
     <div class="flex-1 overflow-hidden h-full">

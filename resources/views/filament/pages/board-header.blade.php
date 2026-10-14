@@ -53,6 +53,8 @@
         </div>
 
         <div class="flex flex-wrap items-center gap-x-6 gap-y-3">
+            <x-flowforge::grouping-picker />
+
             @if ($isFilterable && $hasFiltersDialog)
                 @if ($isModalLayout)
                     @php

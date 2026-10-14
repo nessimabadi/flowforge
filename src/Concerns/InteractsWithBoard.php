@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Url;
 use Relaticle\Flowforge\Board;
 use Relaticle\Flowforge\Exceptions\CardMoveRejectedException;
@@ -32,16 +33,19 @@ trait InteractsWithBoard
     /**
      * Cards per column pagination state.
      */
+    #[Locked]
     public array $columnCardLimits = [];
 
     #[Url(as: 'groupBy')]
     public ?string $groupBy = null;
 
+    #[Locked]
     public ?int $visibleLaneCount = null;
 
     /**
      * @var array<string, array<string, int>>
      */
+    #[Locked]
     public array $cellCardLimits = [];
 
     public function updatedGroupBy(): void
@@ -432,14 +436,14 @@ trait InteractsWithBoard
 
     public function loadMoreItems(string $columnId, ?int $count = null, ?string $laneId = null): void
     {
+        $perPage = $this->getBoard()->getCardsPerColumn();
+        $count = min(max($count ?? $perPage, 1), $perPage);
+
         if ($laneId !== null) {
-            $perCell = $this->getBoard()->getCardsPerColumn();
-            $this->cellCardLimits[$laneId][$columnId] = ($this->cellCardLimits[$laneId][$columnId] ?? $perCell) + ($count ?? $perCell);
+            $this->cellCardLimits[$laneId][$columnId] = ($this->cellCardLimits[$laneId][$columnId] ?? $perPage) + $count;
 
             return;
         }
-
-        $count = $count ?? $this->getBoard()->getCardsPerColumn();
 
         // Set loading state
         $this->loadingStates[$columnId] = true;
