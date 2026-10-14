@@ -2,19 +2,20 @@ name: Deploy Docs
 
 on:
   pull_request:
-    branches: ["4.x", "3.x", "2.x"]
+    branches: ["5.x", "4.x", "3.x", "2.x"]
   push:
-    branches: ["4.x", "3.x", "2.x"]
+    branches: ["5.x", "4.x", "3.x", "2.x"]
     paths:
       - 'docs/**'
       - '.github/workflows/deploy-docs.yml'
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version branch to deploy (e.g., 4.x, 3.x, 2.x)'
+        description: 'Version branch to deploy (e.g., 5.x, 4.x, 3.x, 2.x)'
         required: true
         type: choice
         options:
+          - '5.x'
           - '4.x'
           - '3.x'
           - '2.x'
@@ -58,6 +59,11 @@ jobs:
           BRANCH: ${{ steps.version.outputs.branch }}
         run: |
           case "$BRANCH" in
+            5.x)
+              echo "dest_folder=v5" >> $GITHUB_OUTPUT
+              echo "base_url=/flowforge/v5/" >> $GITHUB_OUTPUT
+              echo "is_latest=false" >> $GITHUB_OUTPUT
+              ;;
             4.x)
               echo "dest_folder=." >> $GITHUB_OUTPUT
               echo "base_url=/flowforge/" >> $GITHUB_OUTPUT
@@ -146,7 +152,7 @@ jobs:
             echo "Deploying latest version to root..."
             cd gh-pages
             # List of items to preserve
-            PRESERVE="v2 v3 versions.json .nojekyll README.md .git"
+            PRESERVE="v2 v3 v5 versions.json .nojekyll README.md .git"
             # Remove everything except preserved items
             for item in *; do
               if [ -e "$item" ]; then
