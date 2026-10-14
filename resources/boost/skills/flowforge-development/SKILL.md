@@ -284,6 +284,56 @@ use Filament\Actions\DeleteAction;
 ])
 ```
 
+### Add Card Action
+
+```php
+->createCardAction(
+    CreateAction::make('createTask')
+        ->model(Task::class)
+        ->schema([TextInput::make('title')->required()])
+        ->mutateDataUsing(fn (array $data, array $arguments): array => [
+            ...$data,
+            'status' => $arguments['column'],
+            'position' => $this->getBoardPositionInColumn($arguments['column'], 'bottom'),
+        ]),
+)
+```
+
+Renders a `+` in each column header and an add row under the cards. Flowforge owns the action's `disabled()` state and disables it for full and unknown columns. Use `visible()` or `authorize()` to block creation.
+
+### Column Limits
+
+```php
+Column::make('in_progress')->limit(3)
+```
+
+The header reads `3/3`, a full column refuses drops while the card hovers, and the add row disables. The limit counts every card in the column, including cards a filter hides. The server re-checks under a cache lock, so use a shared cache store with locks (redis, memcached, database, dynamodb): the `array` store locks per process and `null` never blocks.
+
+### Column Summaries
+
+```php
+->columnSummary(fn (Builder $columnQuery): ?string => Number::currency($columnQuery->sum('amount')))
+```
+
+The closure gets the column's query with the active filters and search applied. Return `null` to hide the summary.
+
+### Swimlanes
+
+```php
+->groupings([
+    Grouping::attribute('priority'),
+
+    Grouping::make('assignee')
+        ->lanes(fn (Builder $boardQuery): array => $this->assigneeLanes($boardQuery))
+        ->emptyLane('Unassigned', fn (Builder $query): Builder => $query->whereDoesntHave('assignees'))
+        ->moveUsing(function (Task $card, Lane $from, Lane $to): void {
+            // sync the relation: $from is the lane the card left, $to the lane it entered
+        }),
+])
+```
+
+A "Group by" select appears and the choice lives in `?groupBy=`. `lanes()` returns `Lane::make($name)->label()->query(fn (Builder $query) => ...)` objects. Give every custom grouping an `emptyLane()`, because the header `+` creates a card without knowing the lane. Without `moveUsing()` the lanes are read-only. Throw `CardMoveRejectedException::because('...')` in `moveUsing()` to refuse a move and roll back both writes. `collapseEmptyColumns()` applies to the plain board only.
+
 ## Position Management
 
 Flowforge uses `DECIMAL(20,10)` positions with BCMath precision for reliable ordering.
@@ -322,21 +372,30 @@ $positions = DecimalPosition::generateSequence(count: 100);
 
 ### Manual Card Movement
 
-```php
-// In your Livewire component
-public function moveCard(
-    int|string $recordId,
-    string $toColumn,
-    ?string $afterRecordId = null,
-    ?string $beforeRecordId = null
-): void {
-    // Parent handles position calculation and saving
-    parent::moveCard($recordId, $toColumn, $afterRecordId, $beforeRecordId);
+Override the hooks, not `moveCard()`. Flowforge keeps the column check, limits, lanes and the browser revert.
 
-    // Add custom logic after move
-    $this->dispatch('card-moved');
+```php
+use Illuminate\Database\Eloquent\Model;
+use Relaticle\Flowforge\Exceptions\CardMoveRejectedException;
+
+protected function authorizeCardMove(Model $card, string $targetColumnId, ?string $toLaneId = null): void
+{
+    if (! auth()->user()->can('update', $card)) {
+        throw CardMoveRejectedException::because('You cannot move this card.');
+    }
+}
+
+protected function persistCardMove(Model $card, mixed $columnValue, string $position): void
+{
+    parent::persistCardMove($card, $columnValue, $position);
+
+    if ($columnValue === 'completed') {
+        $card->update(['completed_at' => now()]);
+    }
 }
 ```
+
+`persistCardMove()` runs inside the move's database transaction. Throw `CardMoveRejectedException::because()` from either hook to refuse with a toast and revert the card. An `abort(403)` reverts the card but shows Livewire's error UI.
 
 ## Artisan Commands
 

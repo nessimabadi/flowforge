@@ -1,3 +1,79 @@
+# Upgrading from v4.x to v5.x
+
+v5 redesigns the board and adds column summaries, hard column limits, card components and swimlanes. It needs no migration, no config key and no env var.
+
+### Requirements
+
+- Filament 5 and PHP 8.3, as in v4.
+- Groupings use window functions: MySQL 8, MariaDB 10.2, PostgreSQL, SQLite 3.25 or SQL Server. Boards without groupings have no new requirement.
+- Hard limits take a cache lock, so use a store that every server shares, such as redis, memcached, database or dynamodb. The `array` store locks per process and the `null` store never blocks. Under either, two simultaneous drops can both pass a limit.
+
+### Upgrade steps
+
+1. `composer require relaticle/flowforge:^5.0`
+2. `php artisan filament:assets`, which publishes the new stylesheet.
+3. Standalone boards (outside a Filament panel) need `@filamentStyles` in their layout.
+4. If you published Flowforge views or lang files, republish them and merge your changes.
+
+### High impact changes
+
+#### The board looks different
+
+Columns are borderless trays with the header above them. The count is plain text instead of a badge, and `Column::color()` draws a dot before the label. An empty column shows no placeholder text, only its add row. Restyle through the `--ff-*` custom properties (see Design Tokens under Customization), not by copying views.
+
+#### `moveCard()` signature and return type
+
+```php
+public function moveCard(
+    string $cardId,
+    string $targetColumnId,
+    ?string $afterCardId = null,
+    ?string $beforeCardId = null,
+    ?string $fromLaneId = null,
+    ?string $toLaneId = null,
+): bool
+```
+
+v4 returned `void`. An override that keeps `: void` or the four-argument signature is now a fatal error.
+
+`moveCard()` returns `false` when it refuses a move, and the browser puts the card back. Most overrides can go. Put checks in `authorizeCardMove(Model $card, string $targetColumnId, ?string $toLaneId = null): void` and custom writes in `persistCardMove(Model $card, mixed $columnValue, string $position): void`. Throw `CardMoveRejectedException::because('...')` from `authorizeCardMove()` to refuse with a message. An `abort(403)` there still reverts the card, but Livewire shows its error UI instead of a toast.
+
+#### Moves to unknown columns and cards are refused
+
+`moveCard()` refuses a target column the board does not show, and a card its query no longer returns. The user sees a notification and the card returns. v4 wrote any value the browser sent.
+
+### Medium impact changes
+
+#### The add row needs `createCardAction()`
+
+```php
+$board->createCardAction(
+    CreateAction::make('createTask')->model(Task::class)->schema([...]),
+);
+```
+
+Flowforge renders it as a `+` in each header and as an add row under the cards, and passes the column as `$arguments['column']`. It hides both when the action is not visible.
+
+Flowforge owns the action's `disabled()` state. It disables the action for unknown and full columns, and, with `authorizationTooltip()`, when the action's authorization fails. Block creation for your own reasons with `authorize()` or `visible()`.
+
+#### Dragging uses SortableJS fallback mode
+
+The dragged card is a real element, so it can lift and tilt, and touch works. CSS that targeted native drag states, or code listening for `dragenter` on the board, stops working.
+
+#### Published views and column paging state
+
+- The `flowforge::column-count` component takes `column` and `columnId` instead of `color` and `total`. A published copy of a v4 view that renders it breaks.
+- The `flowforge::empty-column` component is removed.
+- `$columnCardLimits` is now `#[Locked]`, as are the new lane paging properties. JavaScript or a view that writes them from the browser gets a `CannotUpdateLockedPropertyException`. Call `loadMoreItems()` or `loadAllItems()` instead.
+- `loadMoreItems()` clamps its count to between 1 and `cardsPerColumn()`.
+
+### Low impact changes
+
+- The `no_cards_in_column` lang key is removed, and the new keys exist in the en, de, es and nl files.
+- Record actions moved to a menu in the card's top-right corner. It shows on hover and on keyboard focus where the device has hover.
+
+---
+
 # Upgrading from v2.x to v3.x
 
 This guide covers migrating from Flowforge v2.x (Lexorank/string-based positions) to v3.x (DecimalPosition/DECIMAL-based positions).
