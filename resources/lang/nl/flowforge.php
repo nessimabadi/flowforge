@@ -14,4 +14,8 @@ return [
     'column_full' => ':column heeft de limiet van :limit bereikt.',
     'board_busy' => 'Er wordt al een kaart naar :column verplaatst. Probeer het opnieuw.',
     'no_value' => 'Zonder :attribute',
+    'group_by' => 'Groeperen op',
+    'no_grouping' => 'Geen',
+    'show_more_lanes' => 'Meer banen tonen',
+    'show_more_cards' => ':count meer tonen',
 ];

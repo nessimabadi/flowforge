@@ -64,7 +64,6 @@
                     :record="$record"
                     :config="$config"
                     :columnId="$columnId"
-                    wire:key="card-{{ $record['id'] }}"
                 />
             @endforeach
 

@@ -14,4 +14,8 @@ return [
     'column_full' => ':column alcanzó su límite de :limit.',
     'board_busy' => 'Otra tarjeta se está moviendo a :column. Inténtalo de nuevo.',
     'no_value' => 'Sin :attribute',
+    'group_by' => 'Agrupar por',
+    'no_grouping' => 'Ninguno',
+    'show_more_lanes' => 'Mostrar más carriles',
+    'show_more_cards' => 'Mostrar :count más',
 ];

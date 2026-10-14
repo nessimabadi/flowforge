@@ -14,4 +14,8 @@ return [
     'column_full' => ':column is at its limit of :limit.',
     'board_busy' => 'Another card is moving into :column. Try again.',
     'no_value' => 'No :attribute',
+    'group_by' => 'Group by',
+    'no_grouping' => 'None',
+    'show_more_lanes' => 'Show more lanes',
+    'show_more_cards' => 'Show :count more',
 ];

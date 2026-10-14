@@ -14,4 +14,8 @@ return [
     'column_full' => ':column hat das Limit von :limit erreicht.',
     'board_busy' => 'Gerade wird eine andere Karte nach :column verschoben. Versuchen Sie es erneut.',
     'no_value' => 'Ohne :attribute',
+    'group_by' => 'Gruppieren nach',
+    'no_grouping' => 'Keine',
+    'show_more_lanes' => 'Weitere Bahnen anzeigen',
+    'show_more_cards' => ':count weitere anzeigen',
 ];

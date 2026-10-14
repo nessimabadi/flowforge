@@ -98,18 +98,48 @@ class Board extends ViewComponent
      */
     public function getViewData(): array
     {
-        // Batch all column counts in a single query
-        $allCounts = $this->getBatchedBoardRecordCounts();
+        $livewire = $this->getLivewire();
+        $grouping = $this->getActiveGrouping();
+        $columns = $this->getColumnViewData(withItems: $grouping === null);
 
-        // Build columns data using new concerns
+        $laneData = $grouping === null
+            ? ['lanes' => [], 'hasMoreLanes' => false]
+            : $this->getLaneViewData(
+                $grouping,
+                $livewire->visibleLaneCount ?? $this->getLanesPerPage(),
+                $livewire->cellCardLimits ?? [],
+            );
+
+        return [
+            'columns' => $columns,
+            'lanes' => $laneData['lanes'],
+            'hasMoreLanes' => $laneData['hasMoreLanes'],
+            'groupings' => array_map(fn (Grouping $option): string => (string) $option->getLabel(), $this->getGroupings()),
+            'config' => [
+                'recordTitleAttribute' => $this->getRecordTitleAttribute(),
+                'columnIdentifierAttribute' => $this->getColumnIdentifierAttribute(),
+                'cardLabel' => $this->getCardLabel(),
+                'pluralCardLabel' => $this->getPluralCardLabel(),
+                'headerToolbar' => $this->hasHeaderToolbar(),
+                'collapseEmptyColumns' => $grouping === null
+                    && $this->collapsesEmptyColumns()
+                    && array_sum(array_column($columns, 'total')) > 0,
+                'grouping' => $grouping?->getName(),
+                'lanesWritable' => (bool) $grouping?->isWritable(),
+            ],
+        ];
+    }
+
+    /**
+     * @return array<string, array<string, mixed>>
+     */
+    protected function getColumnViewData(bool $withItems): array
+    {
+        $allCounts = $this->getBatchedBoardRecordCounts();
         $columns = [];
+
         foreach ($this->getColumns() as $column) {
             $columnId = $column->getName();
-
-            // Get formatted records
-            $records = $this->getBoardRecords($columnId);
-            $formattedRecords = $records->map(fn ($record) => $this->formatBoardRecord($record))->toArray();
-
             $limit = $column->getLimit();
             $limitTotal = $limit === null ? null : $this->getUnfilteredColumnRecordCount($columnId);
 
@@ -118,7 +148,9 @@ class Board extends ViewComponent
                 'label' => $column->getLabel(),
                 'color' => $column->getColor(),
                 'icon' => $column->getIcon(),
-                'items' => $formattedRecords,
+                'items' => $withItems
+                    ? $this->getBoardRecords($columnId)->map(fn ($record) => $this->formatBoardRecord($record))->toArray()
+                    : [],
                 'total' => $allCounts[$columnId] ?? 0,
                 'summary' => $this->getColumnSummary($column),
                 'limit' => $limit,
@@ -127,17 +159,7 @@ class Board extends ViewComponent
             ];
         }
 
-        return [
-            'columns' => $columns,
-            'config' => [
-                'recordTitleAttribute' => $this->getRecordTitleAttribute(),
-                'columnIdentifierAttribute' => $this->getColumnIdentifierAttribute(),
-                'cardLabel' => $this->getCardLabel(),
-                'pluralCardLabel' => $this->getPluralCardLabel(),
-                'headerToolbar' => $this->hasHeaderToolbar(),
-                'collapseEmptyColumns' => $this->collapsesEmptyColumns() && array_sum(array_column($columns, 'total')) > 0,
-            ],
-        ];
+        return $columns;
     }
 
     public function isColumnFull(string $columnId): bool

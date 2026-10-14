@@ -37,6 +37,26 @@ trait InteractsWithBoard
     #[Url(as: 'groupBy')]
     public ?string $groupBy = null;
 
+    public ?int $visibleLaneCount = null;
+
+    /**
+     * @var array<string, array<string, int>>
+     */
+    public array $cellCardLimits = [];
+
+    public function updatedGroupBy(): void
+    {
+        $this->visibleLaneCount = null;
+        $this->cellCardLimits = [];
+    }
+
+    public function loadMoreLanes(): void
+    {
+        $perPage = $this->getBoard()->getLanesPerPage();
+
+        $this->visibleLaneCount = ($this->visibleLaneCount ?? $perPage) + $perPage;
+    }
+
     /**
      * Loading states for columns.
      */
@@ -406,8 +426,15 @@ trait InteractsWithBoard
                str_contains($e->getMessage(), 'UNIQUE constraint failed');
     }
 
-    public function loadMoreItems(string $columnId, ?int $count = null): void
+    public function loadMoreItems(string $columnId, ?int $count = null, ?string $laneId = null): void
     {
+        if ($laneId !== null) {
+            $perCell = $this->getBoard()->getCardsPerColumn();
+            $this->cellCardLimits[$laneId][$columnId] = ($this->cellCardLimits[$laneId][$columnId] ?? $perCell) + ($count ?? $perCell);
+
+            return;
+        }
+
         $count = $count ?? $this->getBoard()->getCardsPerColumn();
 
         // Set loading state
