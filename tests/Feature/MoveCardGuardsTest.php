@@ -26,6 +26,19 @@ test('a move into a column the board does not show is refused with a message', f
     expect($this->cardA->fresh()->status)->toBe('todo');
 });
 
+test('a card that is gone is refused with a message', function () {
+    $cardId = (string) $this->cardA->id;
+    $this->cardA->delete();
+
+    $board = Livewire::test(TestBoard::class)->instance();
+
+    expect($board->moveCard($cardId, 'in_progress'))->toBeFalse();
+
+    Livewire::test(TestBoard::class)
+        ->call('moveCard', $cardId, 'in_progress')
+        ->assertNotified(__('flowforge::flowforge.unknown_card'));
+});
+
 test('a refused move returns false', function () {
     $moved = Livewire::test(TestBoard::class)->instance()->moveCard((string) $this->cardA->id, 'archived');
 

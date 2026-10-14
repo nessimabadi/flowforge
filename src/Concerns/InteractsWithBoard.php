@@ -144,13 +144,9 @@ trait InteractsWithBoard
             throw new InvalidArgumentException('Board query not available');
         }
 
-        $card = (clone $query)->find($cardId);
-
-        if (! $card) {
-            throw new InvalidArgumentException("Card not found: {$cardId}");
-        }
-
         try {
+            $card = (clone $query)->find($cardId) ?? throw CardMoveRejectedException::unknownCard();
+
             $this->ensureBoardShowsColumn($targetColumnId);
             $this->authorizeCardMove($card, $targetColumnId);
             $newPosition = $this->moveCardWithinLimit($card, $targetColumnId, $afterCardId, $beforeCardId);
@@ -199,12 +195,12 @@ trait InteractsWithBoard
         $column = $board->getColumn($targetColumnId);
         $limit = $column?->getLimit();
 
-        if ($column === null || $limit === null || $board->getRecordColumnId($card) === $targetColumnId) {
+        if ($column === null || $limit === null) {
             return $this->calculateAndUpdatePositionWithRetry($card, $targetColumnId, $afterCardId, $beforeCardId);
         }
 
         $columnLabel = (string) ($column->getLabel() ?? $targetColumnId);
-        $lock = Cache::lock($this->getColumnLockKey($targetColumnId), 10);
+        $lock = Cache::lock($this->getColumnLockKey($targetColumnId), $this->getColumnLockSeconds());
 
         try {
             $lock->block($this->getColumnLockWaitSeconds());
@@ -213,11 +209,14 @@ trait InteractsWithBoard
         }
 
         try {
-            if ($board->isColumnFull($targetColumnId)) {
+            $freshCard = (clone $board->getQuery())->whereKey($card->getKey())->first()
+                ?? throw CardMoveRejectedException::unknownCard();
+
+            if ($board->getRecordColumnId($freshCard) !== $targetColumnId && $board->isColumnFull($targetColumnId)) {
                 throw CardMoveRejectedException::columnFull($columnLabel, $limit);
             }
 
-            return $this->calculateAndUpdatePositionWithRetry($card, $targetColumnId, $afterCardId, $beforeCardId);
+            return $this->calculateAndUpdatePositionWithRetry($freshCard, $targetColumnId, $afterCardId, $beforeCardId);
         } finally {
             $lock->release();
         }
@@ -230,6 +229,11 @@ trait InteractsWithBoard
             : null;
 
         return implode(':', ['flowforge', static::class, $tenantKey ?? 'global', $columnId]);
+    }
+
+    protected function getColumnLockSeconds(): int
+    {
+        return 10;
     }
 
     protected function getColumnLockWaitSeconds(): int

@@ -11,6 +11,7 @@ return [
     'add_card' => 'Añadir :card',
     'limit_reached' => 'Límite alcanzado',
     'unknown_column' => 'Esa columna ya no está en el tablero. Recarga para ver lo último.',
+    'unknown_card' => 'Esa tarjeta ya no está en el tablero. Recarga para ver lo último.',
     'column_full' => ':column alcanzó su límite de :limit.',
     'board_busy' => 'Otra tarjeta se está moviendo a :column. Inténtalo de nuevo.',
     'no_value' => 'Sin :attribute',

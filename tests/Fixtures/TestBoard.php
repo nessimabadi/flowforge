@@ -14,6 +14,7 @@ use Illuminate\Support\HtmlString;
 use Relaticle\Flowforge\Board;
 use Relaticle\Flowforge\BoardPage;
 use Relaticle\Flowforge\Column;
+use Relaticle\Flowforge\Exceptions\CardMoveRejectedException;
 
 class TestBoard extends BoardPage
 {
@@ -44,6 +45,8 @@ class TestBoard extends BoardPage
     public ?string $denyMovesFor = null;
 
     public bool $recordPersist = false;
+
+    public bool $failNextPersist = false;
 
     public int $lockWaitSeconds = 5;
 
@@ -97,6 +100,12 @@ class TestBoard extends BoardPage
 
     protected function persistCardMove(Model $card, mixed $columnValue, string $position): void
     {
+        if ($this->failNextPersist) {
+            $this->failNextPersist = false;
+
+            throw CardMoveRejectedException::because('Boom');
+        }
+
         parent::persistCardMove($card, $columnValue, $position);
 
         if ($this->recordPersist) {

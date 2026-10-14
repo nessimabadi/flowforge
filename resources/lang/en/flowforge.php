@@ -11,6 +11,7 @@ return [
     'add_card' => 'Add :card',
     'limit_reached' => 'Limit reached',
     'unknown_column' => 'That column is no longer on the board. Reload to see the latest.',
+    'unknown_card' => 'That card is no longer on the board. Reload to see the latest.',
     'column_full' => ':column is at its limit of :limit.',
     'board_busy' => 'Another card is moving into :column. Try again.',
     'no_value' => 'No :attribute',

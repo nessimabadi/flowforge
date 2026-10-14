@@ -11,6 +11,7 @@ return [
     'add_card' => ':card hinzufügen',
     'limit_reached' => 'Limit erreicht',
     'unknown_column' => 'Diese Spalte ist nicht mehr auf dem Board. Laden Sie die Seite neu.',
+    'unknown_card' => 'Diese Karte ist nicht mehr auf dem Board. Laden Sie die Seite neu.',
     'column_full' => ':column hat das Limit von :limit erreicht.',
     'board_busy' => 'Gerade wird eine andere Karte nach :column verschoben. Versuchen Sie es erneut.',
     'no_value' => 'Ohne :attribute',
