@@ -6,17 +6,21 @@ namespace Relaticle\Flowforge\Concerns;
 
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
+use Filament\Facades\Filament;
+use Filament\Notifications\Notification;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
 use Relaticle\Flowforge\Board;
+use Relaticle\Flowforge\Exceptions\CardMoveRejectedException;
 use Relaticle\Flowforge\Exceptions\MaxRetriesExceededException;
 use Relaticle\Flowforge\Services\DecimalPosition;
 use Relaticle\Flowforge\Services\PositionRebalancer;
-use Throwable;
 
 trait InteractsWithBoard
 {
@@ -104,38 +108,109 @@ trait InteractsWithBoard
             ->query(fn (): ?Builder => $this->getBoardQuery());
     }
 
-    /**
-     * Move card to new position using decimal-based positioning.
-     *
-     * @throws Throwable
-     */
     public function moveCard(
         string $cardId,
         string $targetColumnId,
         ?string $afterCardId = null,
-        ?string $beforeCardId = null
-    ): void {
-        $board = $this->getBoard();
-        $query = $board->getQuery();
+        ?string $beforeCardId = null,
+    ): bool {
+        $query = $this->getBoard()->getQuery();
 
         if (! $query) {
             throw new InvalidArgumentException('Board query not available');
         }
 
         $card = (clone $query)->find($cardId);
+
         if (! $card) {
             throw new InvalidArgumentException("Card not found: {$cardId}");
         }
 
-        // Calculate and update position with automatic retry on conflicts
-        $newPosition = $this->calculateAndUpdatePositionWithRetry($card, $targetColumnId, $afterCardId, $beforeCardId);
+        try {
+            $this->ensureBoardShowsColumn($targetColumnId);
+            $this->authorizeCardMove($card, $targetColumnId);
+            $newPosition = $this->moveCardWithinLimit($card, $targetColumnId, $afterCardId, $beforeCardId);
+        } catch (CardMoveRejectedException $exception) {
+            Notification::make()->danger()->title($exception->getMessage())->send();
+            $this->skipRender();
 
-        // Emit success event after successful transaction
+            return false;
+        }
+
         $this->dispatch('kanban-card-moved', [
             'cardId' => $cardId,
             'columnId' => $targetColumnId,
             'position' => $newPosition,
         ]);
+
+        return true;
+    }
+
+    protected function ensureBoardShowsColumn(string $columnId): void
+    {
+        if (! in_array($columnId, $this->getBoard()->getColumnIdentifiers(), true)) {
+            throw CardMoveRejectedException::unknownColumn();
+        }
+    }
+
+    protected function authorizeCardMove(Model $card, string $targetColumnId): void {}
+
+    protected function persistCardMove(Model $card, mixed $columnValue, string $position): void
+    {
+        $board = $this->getBoard();
+
+        $card->update([
+            $board->getColumnIdentifierAttribute() => $columnValue,
+            $board->getPositionIdentifierAttribute() => $position,
+        ]);
+    }
+
+    protected function moveCardWithinLimit(
+        Model $card,
+        string $targetColumnId,
+        ?string $afterCardId,
+        ?string $beforeCardId,
+    ): string {
+        $board = $this->getBoard();
+        $column = $board->getColumn($targetColumnId);
+        $limit = $column?->getLimit();
+
+        if ($column === null || $limit === null || $board->getRecordColumnId($card) === $targetColumnId) {
+            return $this->calculateAndUpdatePositionWithRetry($card, $targetColumnId, $afterCardId, $beforeCardId);
+        }
+
+        $columnLabel = (string) ($column->getLabel() ?? $targetColumnId);
+        $lock = Cache::lock($this->getColumnLockKey($targetColumnId), 10);
+
+        try {
+            $lock->block($this->getColumnLockWaitSeconds());
+        } catch (LockTimeoutException) {
+            throw CardMoveRejectedException::boardBusy($columnLabel);
+        }
+
+        try {
+            if ($board->isColumnFull($targetColumnId)) {
+                throw CardMoveRejectedException::columnFull($columnLabel, $limit);
+            }
+
+            return $this->calculateAndUpdatePositionWithRetry($card, $targetColumnId, $afterCardId, $beforeCardId);
+        } finally {
+            $lock->release();
+        }
+    }
+
+    protected function getColumnLockKey(string $columnId): string
+    {
+        $tenantKey = class_exists(Filament::class) && Filament::getCurrentPanel() !== null
+            ? Filament::getTenant()?->getKey()
+            : null;
+
+        return implode(':', ['flowforge', static::class, $tenantKey ?? 'global', $columnId]);
+    }
+
+    protected function getColumnLockWaitSeconds(): int
+    {
+        return 5;
     }
 
     /**
@@ -198,10 +273,7 @@ trait InteractsWithBoard
             // Update card position
             $columnValue = $this->resolveStatusValue($card, $columnField, $targetColumnId);
 
-            $card->update([
-                $columnField => $columnValue,
-                $positionField => $newPosition,
-            ]);
+            $this->persistCardMove($card, $columnValue, $newPosition);
         });
 
         return $newPosition;

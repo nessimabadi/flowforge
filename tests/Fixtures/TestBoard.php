@@ -9,6 +9,7 @@ use Filament\Actions\CreateAction;
 use Filament\Forms\Components\TextInput;
 use Illuminate\Auth\Access\Response;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\HtmlString;
 use Relaticle\Flowforge\Board;
 use Relaticle\Flowforge\BoardPage;
@@ -39,6 +40,12 @@ class TestBoard extends BoardPage
     public bool $htmlLabel = false;
 
     public ?int $todoLimit = null;
+
+    public ?string $denyMovesFor = null;
+
+    public bool $recordPersist = false;
+
+    public int $lockWaitSeconds = 5;
 
     public function getEloquentQuery(): Builder
     {
@@ -81,6 +88,25 @@ class TestBoard extends BoardPage
                 Column::make('in_progress')->label($this->htmlLabel ? new HtmlString('<em>In Progress</em>') : 'In Progress')->color('blue')->visible(fn () => ! $this->hideEverything),
                 Column::make('completed')->label('Completed')->color('green')->visible(fn () => ! $this->hideEverything),
             ]);
+    }
+
+    protected function authorizeCardMove(Model $card, string $targetColumnId): void
+    {
+        abort_if($card->getAttribute('title') === $this->denyMovesFor, 403);
+    }
+
+    protected function persistCardMove(Model $card, mixed $columnValue, string $position): void
+    {
+        parent::persistCardMove($card, $columnValue, $position);
+
+        if ($this->recordPersist) {
+            $card->update(['priority' => 'moved']);
+        }
+    }
+
+    protected function getColumnLockWaitSeconds(): int
+    {
+        return $this->lockWaitSeconds;
     }
 
     protected function getHeaderActions(): array

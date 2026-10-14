@@ -10,4 +10,7 @@ return [
     'all_cards_loaded' => 'All :total :cards loaded',
     'add_card' => 'Add :card',
     'limit_reached' => 'Limit reached',
+    'unknown_column' => 'That column is no longer on the board. Reload to see the latest.',
+    'column_full' => ':column is at its limit of :limit.',
+    'board_busy' => 'Another card is moving into :column. Try again.',
 ];
