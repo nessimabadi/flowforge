@@ -104,10 +104,17 @@
 }
 
 .ff-card-dragging {
-    rotate: 2.5deg;
-    scale: 1.02;
+    background-color: transparent;
+    box-shadow: none;
     opacity: 1 !important;
     cursor: grabbing;
+}
+
+.ff-card-dragging > .flowforge-card-content {
+    background-color: var(--ff-card-bg);
+    border-radius: 0.75rem;
+    rotate: 2.5deg;
+    scale: 1.02;
     box-shadow:
         0 0 0 1px var(--ff-card-ring),
         0 10px 15px -3px rgb(0 0 0 / 0.1),
@@ -141,7 +148,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .ff-card-dragging {
+    .ff-card-dragging > .flowforge-card-content {
         rotate: none;
         scale: none;
     }

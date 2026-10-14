@@ -3,7 +3,7 @@
 @php
     $total = $column['total'] ?? (isset($column['items']) ? count($column['items']) : 0);
     $isCollapsed = ($config['collapseEmptyColumns'] ?? false) && $total === 0;
-    $isOpen = 'dragOverColumn === '.json_encode($columnId);
+    $isOpen = 'dragOverColumn === '.json_encode((string) $columnId);
     $plainLabel = strip_tags((string) $column['label']);
     $trayLabel = __('flowforge::flowforge.column_label', [
         'column' => $plainLabel,
@@ -30,11 +30,11 @@
             'w-12 min-w-12': ! ({{ $isOpen }}),
             'w-[300px] min-w-[300px]': {{ $isOpen }},
         @endif
-        'ff-column--active': ({{ $isOpen }}) && ! isColumnBlocked(@js($columnId)),
-        'ff-column--blocked': ({{ $isOpen }}) && isColumnBlocked(@js($columnId)),
+        'ff-column--active': ({{ $isOpen }}) && ! isColumnBlocked(@js((string) $columnId)),
+        'ff-column--blocked': ({{ $isOpen }}) && isColumnBlocked(@js((string) $columnId)),
     }"
 >
-    <x-flowforge::column-header :columnId="$columnId" :column="$column" :isCollapsed="$isCollapsed" />
+    <x-flowforge::column-header :columnId="(string) $columnId" :column="$column" :isCollapsed="$isCollapsed" />
 
     <div
         class="flowforge-column-tray ff-tray flex min-h-0 flex-1 flex-col"
@@ -44,7 +44,7 @@
         @if (($column['limit'] ?? null) !== null)
             <p
                 x-cloak
-                x-show="({{ $isOpen }}) && isColumnBlocked(@js($columnId))"
+                x-show="({{ $isOpen }}) && isColumnBlocked(@js((string) $columnId))"
                 class="ff-limit-hint px-3 pt-2 text-xs font-medium"
             >{{ __('flowforge::flowforge.limit_reached') }}</p>
         @endif

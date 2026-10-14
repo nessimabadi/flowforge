@@ -3,9 +3,22 @@
 declare(strict_types=1);
 
 use Livewire\Livewire;
+use Relaticle\Flowforge\Board;
+use Relaticle\Flowforge\Column;
 use Relaticle\Flowforge\Tests\Fixtures\Task;
 use Relaticle\Flowforge\Tests\Fixtures\TestBoard;
 use Relaticle\Flowforge\Tests\Fixtures\TestGroupedBoard;
+
+class DragBindingsNumericBoard extends TestBoard
+{
+    public function board(Board $board): Board
+    {
+        return parent::board($board)->columns([
+            Column::make('1')->label('First'),
+            Column::make('2')->label('Second'),
+        ]);
+    }
+}
 
 test('a column root binds its hover and blocked states', function () {
     Livewire::test(TestBoard::class)
@@ -44,4 +57,16 @@ test('collapsed rails keep their drag-expand binding', function () {
 
     Livewire::test(TestBoard::class, ['collapseEmpty' => true])
         ->assertSeeHtml("'w-[300px] min-w-[300px]': dragOverColumn ===");
+});
+
+test('numeric column ids are emitted as strings', function () {
+    Task::create(['title' => 'Only', 'status' => '1', 'order_position' => '65535.0000000000']);
+
+    $html = Livewire::test(DragBindingsNumericBoard::class, ['collapseEmpty' => true])->html();
+
+    expect($html)
+        ->toContain("isColumnBlocked('2')")
+        ->toContain("displayCount('2'")
+        ->toContain('dragOverColumn === &quot;2&quot;')
+        ->not->toContain('dragOverColumn === 2');
 });

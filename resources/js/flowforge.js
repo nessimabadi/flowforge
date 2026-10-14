@@ -1,3 +1,17 @@
+const FLOWFORGE_TOKENS = [
+    '--ff-board-bg',
+    '--ff-tray-bg',
+    '--ff-card-bg',
+    '--ff-card-ring',
+    '--ff-accent',
+    '--ff-accent-tint',
+    '--ff-danger',
+    '--ff-warning',
+    '--ff-muted',
+    '--ff-ease',
+    '--ff-duration',
+];
+
 export default function flowforge({ state }) {
     return {
         state,
@@ -19,32 +33,56 @@ export default function flowforge({ state }) {
         },
 
         configureSortable(el) {
-            if (!el.sortable) {
+            if (!el.sortable || el.sortable.options.forceFallback) {
                 return;
             }
 
             const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-            el.sortable.option('scrollSensitivity', 100);
-            el.sortable.option('scrollSpeed', 15);
-            el.sortable.option('forceAutoScrollFallback', true);
-            // Native HTML5 drag lets the browser paint the dragged card, so CSS cannot lift or tilt it.
-            el.sortable.option('forceFallback', true);
-            el.sortable.option('fallbackOnBody', true);
-            el.sortable.option('fallbackClass', 'ff-card-dragging');
-            el.sortable.option('ghostClass', 'ff-card-placeholder');
-            el.sortable.option('delay', 150);
-            el.sortable.option('delayOnTouchOnly', true);
-            el.sortable.option('animation', reduceMotion ? 0 : 200);
-            el.sortable.option('group', {
-                name: el.getAttribute('x-sortable-group'),
-                pull: true,
-                put: (to, from) => this.canDrop(to.el, from.el),
+            // SortableJS reads forceFallback only in its constructor, so the instance Filament built has to be replaced.
+            el.sortable.destroy();
+
+            el.sortable = window.Sortable.create(el, {
+                draggable: '[x-sortable-item]',
+                handle: '[x-sortable-handle]',
+                dataIdAttr: 'x-sortable-item',
+                forceFallback: true,
+                fallbackOnBody: true,
+                fallbackClass: 'ff-card-dragging',
+                ghostClass: 'ff-card-placeholder',
+                delay: 150,
+                delayOnTouchOnly: true,
+                animation: reduceMotion ? 0 : 200,
+                scrollSensitivity: 100,
+                scrollSpeed: 15,
+                forceAutoScrollFallback: true,
+                group: {
+                    name: el.getAttribute('x-sortable-group'),
+                    pull: true,
+                    put: (to, from) => this.canDrop(to.el, from.el),
+                },
+                onStart: (event) => this.startDrag(event),
+                onEnd(event) {
+                    const { item: draggedNode, to: parentNode, oldDraggableIndex, newDraggableIndex } = event;
+
+                    if (oldDraggableIndex === newDraggableIndex) {
+                        return;
+                    }
+
+                    const previousNode = parentNode.querySelectorAll(`:scope > ${this.options.draggable}`)[
+                        newDraggableIndex - 1
+                    ];
+
+                    if (previousNode) {
+                        parentNode.insertBefore(draggedNode, previousNode.nextSibling);
+                    }
+                },
             });
-            el.sortable.option('onStart', (event) => this.startDrag(event));
         },
 
         startDrag(event) {
+            this.stopTrackingPointer?.();
+
             this.dragSource = {
                 column: event.from.dataset.columnId,
                 lane: event.from.dataset.laneId ?? null,
@@ -62,6 +100,14 @@ export default function flowforge({ state }) {
         },
 
         trackPointer(pointerEvent) {
+            if (!window.Sortable.active) {
+                this.endDrag();
+
+                return;
+            }
+
+            this.copyTokensToGhost();
+
             const point = pointerEvent.touches?.[0] ?? pointerEvent;
             const target = document.elementFromPoint(point.clientX, point.clientY);
             const cell = target?.closest('[data-column-id]');
@@ -69,6 +115,23 @@ export default function flowforge({ state }) {
 
             this.dragOverColumn = cell?.dataset.columnId ?? root?.dataset.columnRoot ?? null;
             this.dragOverLane = cell?.dataset.laneId ?? null;
+        },
+
+        copyTokensToGhost() {
+            const ghost = window.Sortable.ghost;
+
+            if (!ghost || ghost.dataset.ffTokens) {
+                return;
+            }
+
+            // The fallback clone lives on document.body, outside .ff-board, so it inherits none of the --ff-* tokens.
+            const board = getComputedStyle(this.$root);
+
+            for (const name of FLOWFORGE_TOKENS) {
+                ghost.style.setProperty(name, board.getPropertyValue(name));
+            }
+
+            ghost.dataset.ffTokens = 'true';
         },
 
         endDrag() {
@@ -80,6 +143,10 @@ export default function flowforge({ state }) {
         },
 
         canDrop(toEl, fromEl) {
+            if (!this.$root.contains(toEl) || !this.$root.contains(fromEl)) {
+                return false;
+            }
+
             const toLane = toEl.dataset.laneId ?? null;
             const fromLane = fromEl.dataset.laneId ?? null;
 
@@ -200,9 +267,8 @@ export default function flowforge({ state }) {
             item.remove();
 
             const siblings = from.querySelectorAll(':scope > [x-sortable-item]');
-            const anchor = siblings[oldDraggableIndex]
-                ?? siblings[siblings.length - 1]?.nextSibling
-                ?? from.firstChild;
+            const lastItem = siblings[siblings.length - 1];
+            const anchor = siblings[oldDraggableIndex] ?? (lastItem ? lastItem.nextSibling : from.firstChild);
 
             from.insertBefore(item, anchor);
         },

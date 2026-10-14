@@ -21,12 +21,12 @@
                     data-column-total="{{ $column['limitTotal'] ?? $column['total'] }}"
                     @if (($column['limit'] ?? null) !== null) data-column-limit="{{ $column['limit'] }}" @endif
                     x-bind:class="{
-                        'ff-column--active': dragOverColumn === @js($columnId) && ! isColumnBlocked(@js($columnId)),
-                        'ff-column--blocked': dragOverColumn === @js($columnId) && isColumnBlocked(@js($columnId)),
+                        'ff-column--active': dragOverColumn === @js((string) $columnId) && ! isColumnBlocked(@js((string) $columnId)),
+                        'ff-column--blocked': dragOverColumn === @js((string) $columnId) && isColumnBlocked(@js((string) $columnId)),
                     }"
                     wire:key="lane-header-{{ $columnId }}"
                 >
-                    <x-flowforge::column-header :columnId="$columnId" :column="$column" />
+                    <x-flowforge::column-header :columnId="(string) $columnId" :column="$column" />
                 </div>
             @endforeach
         </div>
@@ -53,8 +53,8 @@
                 <div
                     class="ff-tray flex min-h-24 flex-col p-2"
                     x-bind:class="{
-                        'ff-cell--active': dragOverColumn === @js($columnId) && dragOverLane === @js($lane['id']) && ! isCellBlocked(@js($columnId), @js($lane['id'])),
-                        'ff-cell--blocked': dragOverColumn === @js($columnId) && dragOverLane === @js($lane['id']) && isCellBlocked(@js($columnId), @js($lane['id'])),
+                        'ff-cell--active': dragOverColumn === @js((string) $columnId) && dragOverLane === @js((string) $lane['id']) && ! isCellBlocked(@js((string) $columnId), @js((string) $lane['id'])),
+                        'ff-cell--blocked': dragOverColumn === @js((string) $columnId) && dragOverLane === @js((string) $lane['id']) && isCellBlocked(@js((string) $columnId), @js((string) $lane['id'])),
                     }"
                     wire:key="cell-{{ $lane['id'] }}-{{ $columnId }}"
                 >
