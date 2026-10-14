@@ -68,3 +68,22 @@
         transition: none;
     }
 }
+
+.ff-card-meta {
+    font-size: 0.75rem;
+    line-height: 1rem;
+    color: var(--ff-muted);
+}
+
+.ff-card-meta .fi-badge {
+    background: none;
+    box-shadow: none;
+    padding: 0;
+    color: inherit;
+    font-weight: 400;
+}
+
+.ff-card-meta .fi-in-text {
+    font-size: inherit;
+    color: inherit;
+}
