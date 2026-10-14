@@ -24,6 +24,8 @@ class TestBoard extends BoardPage
 
     public bool $withCreateAction = false;
 
+    public bool $hideCreateAction = false;
+
     public function getEloquentQuery(): Builder
     {
         return Task::query();
@@ -40,6 +42,7 @@ class TestBoard extends BoardPage
             ->createCardAction($this->withCreateAction
                 ? CreateAction::make('createTask')
                     ->model(Task::class)
+                    ->visible(! $this->hideCreateAction)
                     ->schema([TextInput::make('title')->required()])
                     ->mutateDataUsing(fn (array $data, array $arguments): array => [
                         ...$data,

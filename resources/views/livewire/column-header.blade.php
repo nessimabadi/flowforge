@@ -12,6 +12,7 @@
         ->iconButton()
         ->icon('heroicon-m-plus')
         ->label(__('flowforge::flowforge.add_card', ['card' => $this->getBoard()->getCardLabel()]));
+    $createAction = $createAction?->isVisible() ? $createAction : null;
 @endphp
 
 <div

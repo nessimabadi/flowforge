@@ -34,8 +34,34 @@ test('creating into a column the board does not show is refused', function () {
     expect(Task::where('title', 'Sneaky')->exists())->toBeFalse();
 });
 
-test('the header and the add row both mount the create action', function () {
+test('an action the app hides renders no add row and no header button', function () {
+    $html = Livewire::test(TestBoard::class, ['withCreateAction' => true, 'hideCreateAction' => true])->html();
+
+    expect($html)->not->toContain('ff-add-row')
+        ->and($html)->not->toContain('mountAction(\'createTask\'');
+});
+
+test('creating without a column is refused', function () {
+    Livewire::test(TestBoard::class, ['withCreateAction' => true])
+        ->assertActionDisabled('createTask')
+        ->callAction('createTask', ['title' => 'Columnless']);
+
+    expect(Task::where('title', 'Columnless')->exists())->toBeFalse();
+});
+
+test('the add row mounts the create action with its own column', function () {
     $html = Livewire::test(TestBoard::class, ['withCreateAction' => true])->html();
 
-    expect(substr_count($html, 'createTask'))->toBeGreaterThanOrEqual(6);
+    expect($html)->toMatch(createCardPayloadPattern('ff-add-row', 'in_progress'));
 });
+
+test('the header button mounts the create action with its own column', function () {
+    $html = Livewire::test(TestBoard::class, ['withCreateAction' => true])->html();
+
+    expect($html)->toMatch(createCardPayloadPattern('fi-icon-btn', 'in_progress'));
+});
+
+function createCardPayloadPattern(string $class, string $column): string
+{
+    return '/' . preg_quote($class, '/') . '[^>]*wire:click="mountAction\(\'createTask\', JSON\.parse\(\'\{\\\\u0022column\\\\u0022:\\\\u0022' . $column . '\\\\u0022\}\'\)\)"/s';
+}

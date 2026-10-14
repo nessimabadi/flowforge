@@ -4,7 +4,7 @@
     $createAction = $this->getBoardCreateCardAction($columnId);
 @endphp
 
-@if ($createAction)
+@if ($createAction?->isVisible())
     <button
         type="button"
         class="ff-add-row flex w-full items-center gap-1.5 rounded-lg px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-60"

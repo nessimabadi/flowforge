@@ -85,10 +85,10 @@ trait InteractsWithBoard
         return $action ? $action(['column' => $columnId])->livewire($this) : null;
     }
 
-    protected function canCreateCardIn(?string $columnId): bool
+    protected function canCreateCardIn(mixed $columnId): bool
     {
-        if ($columnId === null) {
-            return true;
+        if (! is_string($columnId)) {
+            return false;
         }
 
         return in_array($columnId, $this->getBoard()->getColumnIdentifiers(), true);
