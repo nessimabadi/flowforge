@@ -19,4 +19,5 @@ return [
     'no_grouping' => 'Geen',
     'show_more_lanes' => 'Meer banen tonen',
     'show_more_cards' => ':count meer tonen',
+    'lane_write_failed' => 'De kaart kon niet naar die baan worden verplaatst.',
 ];

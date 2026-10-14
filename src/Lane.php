@@ -35,6 +35,11 @@ class Lane extends Component
         return $static;
     }
 
+    public static function defaultLabel(string $value): string
+    {
+        return preg_match('/^(?=.*[a-z])[a-z0-9]+([_-][a-z0-9]+)*$/', $value) === 1 ? Str::headline($value) : $value;
+    }
+
     public function getName(): string
     {
         return $this->name;
@@ -49,7 +54,7 @@ class Lane extends Component
 
     public function getLabel(): string | Htmlable
     {
-        return $this->evaluate($this->label) ?? Str::headline($this->name);
+        return $this->evaluate($this->label) ?? static::defaultLabel($this->name);
     }
 
     public function avatar(string | Closure | null $url): static

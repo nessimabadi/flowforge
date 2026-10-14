@@ -8,6 +8,7 @@ use Closure;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Relaticle\Flowforge\Grouping;
 use Relaticle\Flowforge\Lane;
 
@@ -36,6 +37,12 @@ trait HasBoardGroupings
      */
     public function getGroupings(): array
     {
+        $table = $this->getQuery()?->getModel()->getTable();
+
+        foreach ($this->groupings as $grouping) {
+            $grouping->boardTable($table);
+        }
+
         return $this->groupings;
     }
 
@@ -45,7 +52,7 @@ trait HasBoardGroupings
             return null;
         }
 
-        return $this->groupings[$name] ?? null;
+        return $this->getGroupings()[$name] ?? null;
     }
 
     public function getActiveGrouping(): ?Grouping
@@ -83,16 +90,34 @@ trait HasBoardGroupings
             return new EloquentCollection;
         }
 
-        $inner = $lane->applyQuery($boardQuery);
-        $model = $inner->getModel();
-        $grammar = $inner->getQuery()->getGrammar();
+        $scoped = $lane->applyQuery($boardQuery)->applyScopes();
+        $model = $scoped->getModel();
+        $inner = $scoped->getQuery();
+
+        $inner->reorder();
+        $inner->limit = null;
+        $inner->offset = null;
+
+        if ($inner->columns === null) {
+            $inner->select($model->qualifyColumn('*'));
+
+            if (! $this->identifierBelongsToModel($model)) {
+                $inner->addSelect($this->getColumnIdentifierAttribute());
+            }
+        }
+
+        if ($inner->distinct) {
+            $inner = $model->newModelQuery()->fromSub($inner, $model->getTable())->getQuery();
+        }
+
+        $grammar = $inner->getGrammar();
         $partition = $grammar->wrap($this->getColumnIdentifierAttribute());
         $order = collect([$this->getPositionIdentifierAttribute(), $model->getKeyName()])
             ->filter()
             ->map(fn (string $column): string => $grammar->wrap($model->qualifyColumn($column)))
             ->implode(', ');
 
-        if ($inner->getQuery()->columns === null) {
+        if ($inner->columns === null) {
             $inner->select($model->qualifyColumn('*'));
         }
 
@@ -101,14 +126,35 @@ trait HasBoardGroupings
             DB::raw("count(*) over (partition by {$partition}) as flowforge_cell_total"),
         ]);
 
-        $outer = $model->newQueryWithoutScopes()
+        $outer = $model->newModelQuery()
             ->fromSub($inner, $model->getTable())
             ->where('flowforge_cell_row', '<=', $perCellLimit)
             ->orderBy('flowforge_cell_row');
 
-        $outer->setEagerLoads($inner->getEagerLoads());
+        $outer->setEagerLoads($scoped->getEagerLoads());
 
         return $outer->get();
+    }
+
+    protected function identifierBelongsToModel(Model $model): bool
+    {
+        $identifier = (string) $this->getColumnIdentifierAttribute();
+
+        if (str_contains($identifier, '.')) {
+            return Str::beforeLast($identifier, '.') === $model->getTable();
+        }
+
+        return $this->modelHasColumn($model, $identifier);
+    }
+
+    protected function laneHasCards(Lane $lane): bool
+    {
+        $boardQuery = $this->getFilteredBoardQuery();
+
+        return $boardQuery !== null
+            && $lane->applyQuery($boardQuery)
+                ->whereIn($this->getColumnIdentifierAttribute(), $this->getColumnIdentifiers())
+                ->exists();
     }
 
     /**
@@ -120,17 +166,19 @@ trait HasBoardGroupings
         $lanes = [];
 
         foreach ($this->getLanes($grouping) as $lane) {
-            $laneData = $this->formatLane($lane, $cellCardLimits[$lane->getName()] ?? []);
+            if (count($lanes) >= $visibleLaneCount) {
+                if ($this->laneHasCards($lane)) {
+                    return ['lanes' => $lanes, 'hasMoreLanes' => true];
+                }
 
-            if ($laneData['total'] === 0) {
                 continue;
             }
 
-            if (count($lanes) >= $visibleLaneCount) {
-                return ['lanes' => $lanes, 'hasMoreLanes' => true];
-            }
+            $laneData = $this->formatLane($lane, $cellCardLimits[$lane->getName()] ?? []);
 
-            $lanes[] = $laneData;
+            if ($laneData['total'] > 0) {
+                $lanes[] = $laneData;
+            }
         }
 
         return ['lanes' => $lanes, 'hasMoreLanes' => false];

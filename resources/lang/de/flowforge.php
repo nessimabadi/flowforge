@@ -19,4 +19,5 @@ return [
     'no_grouping' => 'Keine',
     'show_more_lanes' => 'Weitere Bahnen anzeigen',
     'show_more_cards' => ':count weitere anzeigen',
+    'lane_write_failed' => 'Die Karte konnte nicht in diese Bahn verschoben werden.',
 ];

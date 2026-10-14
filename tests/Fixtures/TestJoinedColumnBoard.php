@@ -12,11 +12,13 @@ use Relaticle\Flowforge\Grouping;
 
 class TestJoinedColumnBoard extends BoardPage
 {
+    public bool $withoutSelect = false;
+
     public function getEloquentQuery(): Builder
     {
-        return Task::query()
-            ->join('task_states', 'task_states.task_id', '=', 'tasks.id')
-            ->select('tasks.*', 'task_states.state_value');
+        $query = Task::query()->join('task_states', 'task_states.task_id', '=', 'tasks.id');
+
+        return $this->withoutSelect ? $query : $query->select('tasks.*', 'task_states.state_value');
     }
 
     public function board(Board $board): Board
@@ -32,6 +34,7 @@ class TestJoinedColumnBoard extends BoardPage
             ])
             ->groupings([
                 Grouping::attribute('tasks.priority')->label('Priority'),
+                Grouping::attribute('task_states.state_value')->label('State'),
             ]);
     }
 }

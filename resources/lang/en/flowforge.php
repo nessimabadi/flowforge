@@ -19,4 +19,5 @@ return [
     'no_grouping' => 'None',
     'show_more_lanes' => 'Show more lanes',
     'show_more_cards' => 'Show :count more',
+    'lane_write_failed' => 'The card could not be moved to that lane.',
 ];
