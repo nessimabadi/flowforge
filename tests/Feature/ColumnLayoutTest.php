@@ -50,3 +50,22 @@ test('each column root exposes its id and total for the drag script', function (
         ->assertSeeHtml('data-column-root="todo"')
         ->assertSeeHtml('data-column-total="1"');
 });
+
+test('a markup column label reads as plain text in the tray label', function () {
+    $component = Livewire::test(TestBoard::class, ['htmlLabel' => true]);
+    $board = $component->instance()->getBoard();
+
+    $component->assertSeeHtml('aria-label="In Progress, 0 ' . e($board->getPluralCardLabel()) . '"');
+
+    expect($component->html())->not->toContain('aria-label="&lt;em&gt;')
+        ->and($component->html())->not->toContain('&amp;lt;em');
+});
+
+test('a collapsed rail titles itself with the plain column label', function () {
+    Task::create(['title' => 'Only Task', 'status' => 'todo', 'order_position' => '65535.0000000000']);
+
+    $html = Livewire::test(TestBoard::class, ['htmlLabel' => true, 'collapseEmpty' => true])->html();
+
+    expect($html)->toContain('title="In Progress"')
+        ->and($html)->not->toContain('title="&lt;em&gt;');
+});

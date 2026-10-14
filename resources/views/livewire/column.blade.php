@@ -4,8 +4,9 @@
     $total = $column['total'] ?? (isset($column['items']) ? count($column['items']) : 0);
     $isCollapsed = ($config['collapseEmptyColumns'] ?? false) && $total === 0;
     $isOpen = 'dragOverColumn === '.json_encode($columnId);
+    $plainLabel = strip_tags((string) $column['label']);
     $trayLabel = __('flowforge::flowforge.column_label', [
-        'column' => $column['label'],
+        'column' => $plainLabel,
         'count' => $total,
         'cards' => trans_choice('flowforge::flowforge.cards_count', $total, [
             'card' => $config['cardLabel'],
@@ -24,7 +25,7 @@
     data-column-total="{{ $total }}"
     x-on:dragenter="dragOverColumn = @js($columnId)"
     @if($isCollapsed)
-        title="{{ $column['label'] }}"
+        title="{{ $plainLabel }}"
         x-bind:class="{
             'w-12 min-w-12': ! ({{ $isOpen }}),
             'w-[300px] min-w-[300px]': {{ $isOpen }},

@@ -8,6 +8,7 @@ use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Forms\Components\TextInput;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\HtmlString;
 use Relaticle\Flowforge\Board;
 use Relaticle\Flowforge\BoardPage;
 use Relaticle\Flowforge\Column;
@@ -29,6 +30,8 @@ class TestBoard extends BoardPage
     public bool $withSummary = false;
 
     public bool $nullSummary = false;
+
+    public bool $htmlLabel = false;
 
     public function getEloquentQuery(): Builder
     {
@@ -65,7 +68,7 @@ class TestBoard extends BoardPage
                 Column::make('todo')->label('To Do')->color('gray')->visible(fn () => ! $this->hideEverything),
                 Column::make('hidden_column')->visible(fn () => $this->showAllColumns && ! $this->hideEverything)->label('Hidden Column'),
                 Column::make('archived')->label('Archived Column')->hidden(true),
-                Column::make('in_progress')->label('In Progress')->color('blue')->visible(fn () => ! $this->hideEverything),
+                Column::make('in_progress')->label($this->htmlLabel ? new HtmlString('<em>In Progress</em>') : 'In Progress')->color('blue')->visible(fn () => ! $this->hideEverything),
                 Column::make('completed')->label('Completed')->color('green')->visible(fn () => ! $this->hideEverything),
             ]);
     }
