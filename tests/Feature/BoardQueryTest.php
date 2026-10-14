@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Livewire\Livewire;
+use Relaticle\Flowforge\Tests\Fixtures\PlainStatusEnum;
 use Relaticle\Flowforge\Tests\Fixtures\StatusEnum;
 use Relaticle\Flowforge\Tests\Fixtures\Task;
 use Relaticle\Flowforge\Tests\Fixtures\TestBoard;
@@ -47,6 +48,18 @@ test('the record column id reads a backed enum as its value', function () {
     $record->setRawAttributes(['status' => 'active']);
 
     expect($board->getRecordColumnId($record))->toBe('active');
+});
+
+test('the record column id reads a pure enum as its case name', function () {
+    $board = Livewire::test(TestBoard::class)->instance()->getBoard();
+
+    $record = new class extends Task
+    {
+        protected $casts = ['status' => PlainStatusEnum::class];
+    };
+    $record->setRawAttributes(['status' => 'Review']);
+
+    expect($board->getRecordColumnId($record))->toBe('Review');
 });
 
 test('the record column id reads a plain string', function () {

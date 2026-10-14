@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
+use UnitEnum;
 
 /**
  * Enterprise-grade record management for Board with cursor-based pagination.
@@ -96,7 +97,11 @@ trait HasBoardRecords
     {
         $value = data_get($record, $this->getColumnIdentifierAttribute());
 
-        return $value instanceof BackedEnum ? (string) $value->value : (string) $value;
+        return match (true) {
+            $value instanceof BackedEnum => (string) $value->value,
+            $value instanceof UnitEnum => $value->name,
+            default => (string) $value,
+        };
     }
 
     /**
