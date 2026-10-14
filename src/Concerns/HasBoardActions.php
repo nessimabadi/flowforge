@@ -163,6 +163,22 @@ trait HasBoardActions
     }
 
     /**
+     * @param  array<Action|ActionGroup>  $recordActions
+     * @return array{url: ?string, openInNewTab: bool, action: ?string}
+     */
+    public function getCardLink(array $recordActions): array
+    {
+        $cardAction = $this->resolveCardAction($recordActions);
+        $url = $cardAction?->shouldPostToUrl() ? null : $cardAction?->getUrl();
+
+        return [
+            'url' => filled($url) ? $url : null,
+            'openInNewTab' => (bool) $cardAction?->shouldOpenUrlInNewTab(),
+            'action' => filled($url) ? null : $this->getCardAction(),
+        ];
+    }
+
+    /**
      * Get registered card actions.
      */
     public function getRegisteredCardActions(): array

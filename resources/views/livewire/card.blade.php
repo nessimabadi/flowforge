@@ -1,92 +1,57 @@
-@props(['columnId', 'record'])
+@props(['columnId', 'record', 'laneId' => null])
 
 @php
-    $processedRecordActions = $this->getBoard()->getBoardRecordActions($record);
-    $hasActions = !empty($processedRecordActions);
-    $cardAction = $this->getBoard()->getCardAction();
-    $hasCardAction = $cardAction !== null;
-    $hasPositionIdentifier = $this->getBoard()->getPositionIdentifierAttribute() !== null;
+    use Relaticle\Flowforge\Components\CardTitle;
+    use function Filament\Support\generate_href_html;
 
-    // A card action configured with a url must navigate like a native link instead of
-    // mounting a modal, so middle-click, cmd-click and "copy link" keep working.
-    //
-    // The rule is Filament's own, taken from ListRecords::table(): a url on the action
-    // decides. There, recordAction() skips any action whose getUrl() is filled and
-    // recordUrl() takes it instead, with no check of the action's modal state. An
-    // action carrying both a url and a confirmation therefore renders as a plain link
-    // in core too. Mirroring that keeps a board card and a table row behaving the same
-    // way for the same action, which matters more than second-guessing the config.
-    //
-    // Only POST urls are excluded: those need a form rather than an anchor.
-    $cardActionInstance = $this->getBoard()->resolveCardAction($processedRecordActions);
-    $cardActionUrl = $cardActionInstance?->shouldPostToUrl()
-        ? null
-        : $cardActionInstance?->getUrl();
-    $hasCardActionUrl = filled($cardActionUrl);
-    $cardActionHref = $hasCardActionUrl
-        ? \Filament\Support\generate_href_html(
-            $cardActionUrl,
-            $cardActionInstance->shouldOpenUrlInNewTab(),
-            hasNestedClickEventHandler: true,
-        )
-        : null;
+    $board = $this->getBoard();
+    $recordActions = $board->getBoardRecordActions($record);
+    $link = $board->getCardLink($recordActions);
+    $href = $link['url'] ? generate_href_html($link['url'], $link['openInNewTab'], hasNestedClickEventHandler: true) : null;
+    $mountAction = $link['action'];
+    $isDraggable = $board->getPositionIdentifierAttribute() !== null;
+    $hasCardTitle = $record['schema'] !== null
+        && collect($record['schema']->getFlatComponents())->contains(fn (mixed $component): bool => $component instanceof CardTitle);
 @endphp
 
 <div
     @class([
-        'flowforge-card mb-3 bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden transition-all duration-200 hover:shadow-md',
-        'cursor-pointer' => $hasActions || $hasCardAction,
-        'cursor-pointer transition-all duration-100 ease-in-out hover:shadow-lg hover:border-gray-400 active:shadow-md' => $hasCardAction,
-        'cursor-grab hover:cursor-grabbing' => $hasPositionIdentifier,
-        'cursor-default' => !$hasActions && !$hasCardAction && !$hasPositionIdentifier,
+        'flowforge-card ff-card group relative mb-2',
+        'cursor-grab active:cursor-grabbing' => $isDraggable,
+        'cursor-pointer' => ! $isDraggable && ($href || $mountAction),
     ])
+    wire:key="card-{{ $laneId ?? 'board' }}-{{ $record['id'] }}"
     x-sortable-item="{{ $record['id'] }}"
     data-card-id="{{ $record['id'] }}"
-    @if($hasPositionIdentifier)
-        x-sortable-handle
-    @endif
+    @if($isDraggable) x-sortable-handle @endif
     data-position="{{ $record['position'] ?? '' }}"
 >
-    <div class="flowforge-card-content">
-        <div class="flex items-start justify-between mb-2">
-            <h4 class="text-sm font-semibold text-gray-900 dark:text-white p-3"
-                @if($hasCardAction && $cardAction && !$hasCardActionUrl)
-                    wire:click="mountAction('{{ $cardAction }}', [], @js(['recordKey' => $record['id']]))"
-                style="cursor: pointer;"
-                @endif
-            >
-                @if($hasCardActionUrl)
-                    <a {{ $cardActionHref }} class="block">
-                        {{ $record['title'] }}
-                    </a>
+    @if (count($recordActions) > 0)
+        <div class="absolute right-2 top-2 z-10 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+            <x-filament-actions::group :actions="$recordActions" />
+        </div>
+    @endif
+
+    <div
+        class="flowforge-card-content flex flex-col gap-2 p-3"
+        @if($mountAction) wire:click="mountAction('{{ $mountAction }}', [], @js(['recordKey' => $record['id']]))" @endif
+    >
+        @unless ($hasCardTitle)
+            <h4 class="pr-6 text-sm font-medium text-gray-950 dark:text-white">
+                @if ($href)
+                    <a {{ $href }} class="block">{{ $record['title'] }}</a>
                 @else
                     {{ $record['title'] }}
                 @endif
             </h4>
+        @endunless
 
-            @if($hasActions)
-                <div class="m-3">
-                    <x-filament-actions::group :actions="$processedRecordActions"/>
-                </div>
+        @if (filled($record['schema']))
+            @if ($href)
+                <a {{ $href }} class="block">{{ $record['schema'] }}</a>
+            @else
+                {{ $record['schema'] }}
             @endif
-        </div>
-
-        <div class="px-3 pb-3"
-             @if($hasCardAction && $cardAction && !$hasCardActionUrl)
-                 wire:click="mountAction('{{ $cardAction }}', [], @js(['recordKey' => $record['id']]))"
-             style="cursor: pointer;"
-            @endif
-        >
-            {{-- Render card schema with compact spacing --}}
-            @if(filled($record['schema']))
-                @if($hasCardActionUrl)
-                    <a {{ $cardActionHref }} class="block">
-                        {{ $record['schema'] }}
-                    </a>
-                @else
-                    {{ $record['schema'] }}
-                @endif
-            @endif
-        </div>
+        @endif
     </div>
 </div>

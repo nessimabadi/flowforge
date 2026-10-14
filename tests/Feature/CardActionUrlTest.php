@@ -31,7 +31,7 @@ beforeEach(function () {
 function cardTitleHtml(string $html): string
 {
     return str($html)
-        ->after('<h4 class="text-sm font-semibold')
+        ->after('flowforge-card-content')
         ->before('</h4>')
         ->toString();
 }
