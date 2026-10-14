@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Relaticle\Flowforge\Tests\Fixtures;
 
+use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Schema;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Model;
 use Relaticle\Flowforge\Board;
 use Relaticle\Flowforge\BoardPage;
 use Relaticle\Flowforge\Column;
@@ -19,7 +19,7 @@ class TestCardComponentsBoard extends BoardPage
 {
     public function getEloquentQuery(): Builder
     {
-        return Task::query()->with('assignees');
+        return Task::query()->with(['assignees', 'creator']);
     }
 
     public function board(Board $board): Board
@@ -37,13 +37,18 @@ class TestCardComponentsBoard extends BoardPage
                 CardTag::make('priority')
                     ->formatStateUsing(fn (string $state): string => ucfirst($state))
                     ->color(fn (string $state): string => $state === 'high' ? 'danger' : 'gray'),
+                CardTag::make('labels')
+                    ->color(fn (string $state): string => $state === 'bug' ? 'danger' : 'gray'),
                 CardTitle::make(),
                 CardMeta::make([
                     CardTag::make('status'),
+                    TextEntry::make('description'),
                 ]),
                 CardAvatar::make('assignees')
                     ->limit(3)
-                    ->nameUsing(fn (Model $person): string => $person->name),
+                    ->nameUsing(fn (User $user): string => strtoupper($user->name)),
+                CardAvatar::make('creator')
+                    ->avatarUrlUsing(fn (User $user): string => "https://example.test/avatars/{$user->id}.png"),
             ]));
     }
 }

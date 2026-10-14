@@ -68,6 +68,11 @@ class CardAvatar extends Entry implements HasEmbeddedView
             ->all();
     }
 
+    public function isHidden(): bool
+    {
+        return parent::isHidden() || $this->getPeople() === [];
+    }
+
     public function toEmbeddedHtml(): string
     {
         $people = $this->getPeople();
@@ -89,11 +94,11 @@ class CardAvatar extends Entry implements HasEmbeddedView
     protected function describePerson(Model $person): array
     {
         $name = (string) ($this->nameUsing
-            ? $this->evaluate($this->nameUsing, ['person' => $person], [Model::class => $person])
+            ? $this->evaluate($this->nameUsing, ['person' => $person], $this->injectionsFor($person))
             : ($person->getAttribute('name') ?? $person->getKey()));
 
         $url = $this->avatarUrlUsing
-            ? $this->evaluate($this->avatarUrlUsing, ['person' => $person], [Model::class => $person])
+            ? $this->evaluate($this->avatarUrlUsing, ['person' => $person], $this->injectionsFor($person))
             : ($person instanceof HasAvatar ? $person->getFilamentAvatarUrl() : null);
 
         $initials = Str::of($name)
@@ -104,5 +109,16 @@ class CardAvatar extends Entry implements HasEmbeddedView
             ->implode('');
 
         return ['name' => $name, 'url' => filled($url) ? (string) $url : null, 'initials' => $initials];
+    }
+
+    /**
+     * @return array<class-string, Model>
+     */
+    protected function injectionsFor(Model $person): array
+    {
+        return [
+            Model::class => $person,
+            $person::class => $person,
+        ];
     }
 }
