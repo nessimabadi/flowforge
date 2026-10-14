@@ -91,7 +91,11 @@ trait InteractsWithBoard
             return false;
         }
 
-        return in_array($columnId, $this->getBoard()->getColumnIdentifiers(), true);
+        if (! in_array($columnId, $this->getBoard()->getColumnIdentifiers(), true)) {
+            return false;
+        }
+
+        return ! $this->getBoard()->isColumnFull($columnId);
     }
 
     protected function makeBoard(): Board

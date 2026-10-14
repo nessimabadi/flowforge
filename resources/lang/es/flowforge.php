@@ -9,4 +9,5 @@ return [
     'cards_pagination' => ':current de :total :cards',
     'all_cards_loaded' => 'Se cargaron todos los :total :cards',
     'add_card' => 'Añadir :card',
+    'limit_reached' => 'Límite alcanzado',
 ];

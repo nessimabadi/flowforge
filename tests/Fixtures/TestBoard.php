@@ -33,6 +33,8 @@ class TestBoard extends BoardPage
 
     public bool $htmlLabel = false;
 
+    public ?int $todoLimit = null;
+
     public function getEloquentQuery(): Builder
     {
         return Task::query();
@@ -54,7 +56,7 @@ class TestBoard extends BoardPage
                     ->mutateDataUsing(fn (array $data, array $arguments): array => [
                         ...$data,
                         'status' => $arguments['column'] ?? 'todo',
-                        'order_position' => '65535.0000000000',
+                        'order_position' => $this->getBoardPositionInColumn($arguments['column'] ?? 'todo', 'bottom'),
                     ])
                 : null)
             ->columnSummary(match (true) {
@@ -65,7 +67,7 @@ class TestBoard extends BoardPage
             ->columnIdentifier('status')
             ->positionIdentifier('order_position')
             ->columns([
-                Column::make('todo')->label('To Do')->color('gray')->visible(fn () => ! $this->hideEverything),
+                Column::make('todo')->label('To Do')->color('gray')->limit($this->todoLimit)->visible(fn () => ! $this->hideEverything),
                 Column::make('hidden_column')->visible(fn () => $this->showAllColumns && ! $this->hideEverything)->label('Hidden Column'),
                 Column::make('archived')->label('Archived Column')->hidden(true),
                 Column::make('in_progress')->label($this->htmlLabel ? new HtmlString('<em>In Progress</em>') : 'In Progress')->color('blue')->visible(fn () => ! $this->hideEverything),

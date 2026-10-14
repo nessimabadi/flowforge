@@ -22,7 +22,8 @@
         'flowforge-column-collapsed w-12 min-w-12' => $isCollapsed,
     ])
     data-column-root="{{ $columnId }}"
-    data-column-total="{{ $total }}"
+    data-column-total="{{ $column['limitTotal'] ?? $total }}"
+    @if (($column['limit'] ?? null) !== null) data-column-limit="{{ $column['limit'] }}" @endif
     x-on:dragenter="dragOverColumn = @js($columnId)"
     @if($isCollapsed)
         title="{{ $plainLabel }}"
@@ -82,7 +83,7 @@
 
         @unless($isCollapsed)
             <div class="px-2 pb-2">
-                <x-flowforge::add-card-row :columnId="$columnId" :cardLabel="$config['cardLabel']" />
+                <x-flowforge::add-card-row :columnId="$columnId" :cardLabel="$config['cardLabel']" :disabled="$column['isFull'] ?? false" />
             </div>
         @endunless
     </div>

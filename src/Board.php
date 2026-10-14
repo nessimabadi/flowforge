@@ -108,6 +108,9 @@ class Board extends ViewComponent
             $records = $this->getBoardRecords($columnId);
             $formattedRecords = $records->map(fn ($record) => $this->formatBoardRecord($record))->toArray();
 
+            $limit = $column->getLimit();
+            $limitTotal = $limit === null ? null : $this->getUnfilteredColumnRecordCount($columnId);
+
             $columns[$columnId] = [
                 'id' => $columnId,
                 'label' => $column->getLabel(),
@@ -116,6 +119,9 @@ class Board extends ViewComponent
                 'items' => $formattedRecords,
                 'total' => $allCounts[$columnId] ?? 0,
                 'summary' => $this->getColumnSummary($column),
+                'limit' => $limit,
+                'limitTotal' => $limitTotal,
+                'isFull' => $limit !== null && $limitTotal >= $limit,
             ];
         }
 
@@ -130,6 +136,17 @@ class Board extends ViewComponent
                 'collapseEmptyColumns' => $this->collapsesEmptyColumns() && array_sum(array_column($columns, 'total')) > 0,
             ],
         ];
+    }
+
+    public function isColumnFull(string $columnId): bool
+    {
+        $limit = $this->getColumn($columnId)?->getLimit();
+
+        if ($limit === null) {
+            return false;
+        }
+
+        return $this->getUnfilteredColumnRecordCount($columnId) >= $limit;
     }
 
     protected function resolveDefaultClosureDependencyForEvaluationByName(string $parameterName): array
