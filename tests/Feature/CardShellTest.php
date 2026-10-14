@@ -17,10 +17,12 @@ test('a card renders on the ring shell instead of a border', function () {
         ->and($html)->not->toContain('border border-gray-200');
 });
 
-test('record actions sit in a corner revealed on hover and focus', function () {
-    Livewire::test(TestBoardResourcePage::class)
-        ->assertSeeHtml('group-hover:opacity-100')
-        ->assertSeeHtml('focus-within:opacity-100');
+test('record actions sit in a corner that css reveals without a stacking layer', function () {
+    $html = Livewire::test(TestBoardResourcePage::class)->html();
+
+    expect($html)->toContain('ff-card-actions')
+        ->and($html)->not->toMatch('/class="[^"]*\bff-card-actions\b[^"]*\bz-10\b/')
+        ->and($html)->not->toMatch('/class="[^"]*\bz-10\b[^"]*\bff-card-actions\b/');
 });
 
 test('each card carries a wire key scoped to the flat board', function () {

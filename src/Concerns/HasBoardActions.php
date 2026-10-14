@@ -169,6 +169,11 @@ trait HasBoardActions
     public function getCardLink(array $recordActions): array
     {
         $cardAction = $this->resolveCardAction($recordActions);
+
+        if ($cardAction?->isHidden()) {
+            return ['url' => null, 'openInNewTab' => false, 'action' => null];
+        }
+
         $url = $cardAction?->shouldPostToUrl() ? null : $cardAction?->getUrl();
 
         return [

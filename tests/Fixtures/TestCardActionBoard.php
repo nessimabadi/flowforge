@@ -38,6 +38,12 @@ class TestCardActionBoard extends BoardPage
                         TextInput::make('title'),
                     ])
                     ->action(function (): void {}),
+                Action::make('hiddenView')
+                    ->url(fn (Task $record): string => "https://example.test/tasks/{$record->getKey()}")
+                    ->hidden(),
+                Action::make('hiddenEdit')
+                    ->action(function (): void {})
+                    ->hidden(),
                 Action::make('run')
                     ->action(function (): void {}),
                 Action::make('urlWithConfirmation')

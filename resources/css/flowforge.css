@@ -87,3 +87,16 @@
     font-size: inherit;
     color: inherit;
 }
+
+@media (hover: hover) {
+    .ff-card-actions {
+        opacity: 0;
+        transition: opacity var(--ff-duration) var(--ff-ease);
+    }
+
+    .ff-card:hover .ff-card-actions,
+    .ff-card-actions:focus-within,
+    .ff-card-actions:has([aria-expanded="true"]) {
+        opacity: 1;
+    }
+}

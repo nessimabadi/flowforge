@@ -16,7 +16,7 @@
 
 <div
     @class([
-        'flowforge-card ff-card group relative mb-2',
+        'flowforge-card ff-card relative mb-2',
         'cursor-grab active:cursor-grabbing' => $isDraggable,
         'cursor-pointer' => ! $isDraggable && ($href || $mountAction),
     ])
@@ -27,13 +27,13 @@
     data-position="{{ $record['position'] ?? '' }}"
 >
     @if (count($recordActions) > 0)
-        <div class="absolute right-2 top-2 z-10 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+        <div class="ff-card-actions absolute right-2 top-2">
             <x-filament-actions::group :actions="$recordActions" />
         </div>
     @endif
 
     <div
-        class="flowforge-card-content flex flex-col gap-2 p-3"
+        @class(['flowforge-card-content flex flex-col gap-2 p-3', 'cursor-pointer' => $mountAction])
         @if($mountAction) wire:click="mountAction('{{ $mountAction }}', [], @js(['recordKey' => $record['id']]))" @endif
     >
         @unless ($hasCardTitle)

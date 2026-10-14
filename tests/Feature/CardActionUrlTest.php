@@ -8,9 +8,12 @@ use Relaticle\Flowforge\Tests\Fixtures\TestBoard;
 use Relaticle\Flowforge\Tests\Fixtures\TestCardActionBoard;
 use Relaticle\Flowforge\Tests\Fixtures\TestCardActionConfirmBoard;
 use Relaticle\Flowforge\Tests\Fixtures\TestCardActionDefaultUrlBoard;
+use Relaticle\Flowforge\Tests\Fixtures\TestCardActionHiddenBoard;
+use Relaticle\Flowforge\Tests\Fixtures\TestCardActionHiddenModalBoard;
 use Relaticle\Flowforge\Tests\Fixtures\TestCardActionModalBoard;
 use Relaticle\Flowforge\Tests\Fixtures\TestCardActionModalHeadingBoard;
 use Relaticle\Flowforge\Tests\Fixtures\TestCardActionNewTabBoard;
+use Relaticle\Flowforge\Tests\Fixtures\TestCardActionTitleBoard;
 
 /**
  * A card action configured with ->url() must render the card as a native link, so
@@ -61,6 +64,32 @@ test('card action without a url still mounts the action', function () {
 
     expect($title)->toContain("mountAction('edit'")
         ->and($title)->not->toContain('href=');
+});
+
+test('a url card action with a card title schema renders one link', function () {
+    $content = cardTitleHtml(Livewire::test(TestCardActionTitleBoard::class)->html());
+
+    expect(substr_count($content, '<a '))->toBe(1)
+        ->and($content)->toContain('Linked task');
+});
+
+test('a hidden url card action renders no link', function () {
+    $content = cardTitleHtml(Livewire::test(TestCardActionHiddenBoard::class)->html());
+
+    expect($content)->not->toContain('href=')
+        ->and($content)->toContain('Linked task');
+});
+
+test('a hidden modal card action mounts nothing', function () {
+    $html = Livewire::test(TestCardActionHiddenModalBoard::class)->html();
+
+    expect($html)->not->toContain("mountAction('hiddenEdit'");
+});
+
+test('a modal card action marks its content as clickable', function () {
+    $html = Livewire::test(TestCardActionModalBoard::class)->html();
+
+    expect($html)->toMatch('/class="[^"]*\bcursor-pointer\b[^"]*"\s+wire:click="mountAction\(\'edit\'/');
 });
 
 /**
