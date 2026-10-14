@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Relaticle\Flowforge\Concerns;
 
+use BackedEnum;
 use Exception;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
@@ -57,32 +59,63 @@ trait HasBoardRecords
         return $this->cardsPerColumn;
     }
 
+    public function getFilteredBoardQuery(): ?Builder
+    {
+        $query = $this->getQuery();
+
+        if (! $query) {
+            return null;
+        }
+
+        $livewire = $this->getLivewire();
+
+        if ($livewire->getTable()->isFilterable() || $livewire->hasTableSearch()) {
+            return clone $livewire->getFilteredTableQuery();
+        }
+
+        return clone $query;
+    }
+
+    public function getFilteredColumnQuery(string $columnId): ?Builder
+    {
+        return $this->getFilteredBoardQuery()?->where($this->getColumnIdentifierAttribute(), $columnId);
+    }
+
+    public function getUnfilteredColumnRecordCount(string $columnId): int
+    {
+        $query = $this->getQuery();
+
+        if (! $query) {
+            return 0;
+        }
+
+        return (clone $query)->where($this->getColumnIdentifierAttribute(), $columnId)->count();
+    }
+
+    public function getRecordColumnId(Model $record): string
+    {
+        $value = data_get($record, $this->getColumnIdentifierAttribute());
+
+        return $value instanceof BackedEnum ? (string) $value->value : (string) $value;
+    }
+
     /**
      * Get records for a specific column with cursor-based pagination.
      * Uses position field for optimal performance with large datasets.
      */
     public function getBoardRecords(string $columnId): Collection
     {
-        $query = $this->getQuery();
+        $queryClone = $this->getFilteredColumnQuery($columnId);
 
-        if (! $query) {
+        if (! $queryClone) {
             return new Collection;
         }
 
-        $statusField = $this->getColumnIdentifierAttribute();
         $livewire = $this->getLivewire();
 
         $limit = property_exists($livewire, 'columnCardLimits')
             ? ($livewire->columnCardLimits[$columnId] ?? $this->getCardsPerColumn())
             : $this->getCardsPerColumn();
-
-        $queryClone = (clone $query)->where($statusField, $columnId);
-
-        // Apply table filters and search using Filament's native system
-        if ($livewire->getTable()->isFilterable() || $livewire->hasTableSearch()) {
-            $baseQuery = $livewire->getFilteredTableQuery();
-            $queryClone = (clone $baseQuery)->where($statusField, $columnId);
-        }
 
         $positionField = $this->getPositionIdentifierAttribute();
         $keyName = $queryClone->getModel()->getKeyName();
@@ -100,23 +133,7 @@ trait HasBoardRecords
      */
     public function getBoardRecordCount(string $columnId): int
     {
-        $query = $this->getQuery();
-
-        if (! $query) {
-            return 0;
-        }
-
-        $statusField = $this->getColumnIdentifierAttribute();
-        $queryClone = (clone $query)->where($statusField, $columnId);
-
-        // Apply table filters and search using Filament's native system
-        $livewire = $this->getLivewire();
-        if ($livewire->getTable()->isFilterable() || $livewire->hasTableSearch()) {
-            $baseQuery = $livewire->getFilteredTableQuery();
-            $queryClone = (clone $baseQuery)->where($statusField, $columnId);
-        }
-
-        return $queryClone->count();
+        return $this->getFilteredColumnQuery($columnId)?->count() ?? 0;
     }
 
     /**
@@ -124,22 +141,13 @@ trait HasBoardRecords
      */
     public function getBatchedBoardRecordCounts(): array
     {
-        $query = $this->getQuery();
+        $queryClone = $this->getFilteredBoardQuery();
 
-        if (! $query) {
+        if (! $queryClone) {
             return [];
         }
 
         $statusField = $this->getColumnIdentifierAttribute();
-        $livewire = $this->getLivewire();
-
-        $queryClone = clone $query;
-
-        // Apply table filters and search using Filament's native system
-        if ($livewire->getTable()->isFilterable() || $livewire->hasTableSearch()) {
-            $baseQuery = $livewire->getFilteredTableQuery();
-            $queryClone = clone $baseQuery;
-        }
 
         return $queryClone
             ->select(DB::raw("{$statusField} as column_value, COUNT(*) as total"))
@@ -156,7 +164,7 @@ trait HasBoardRecords
         $formatted = [
             'id' => (string) $record->getKey(),
             'title' => data_get($record, $this->getRecordTitleAttribute()),
-            'column' => data_get($record, $this->getColumnIdentifierAttribute()),
+            'column' => $this->getRecordColumnId($record),
             'position' => data_get($record, $this->getPositionIdentifierAttribute()),
             'model' => $record,
         ];
