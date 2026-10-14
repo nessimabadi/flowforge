@@ -99,3 +99,16 @@ test('registers the board stylesheet as a filament asset', function () {
 
     expect($styleIds)->toContain('flowforge');
 });
+
+test('every registered asset file exists on disk', function () {
+    $assets = [
+        ...FilamentAsset::getAlpineComponents(['relaticle/flowforge']),
+        ...FilamentAsset::getStyles(['relaticle/flowforge']),
+    ];
+
+    expect($assets)->toHaveCount(2);
+
+    foreach ($assets as $asset) {
+        expect(file_exists($asset->getPath()))->toBeTrue();
+    }
+});
