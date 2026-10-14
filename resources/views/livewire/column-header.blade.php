@@ -59,6 +59,10 @@
         </h3>
 
         <x-flowforge::column-count :column="$column" :columnId="$columnId" />
+
+        @if (filled($column['summary'] ?? null))
+            <span class="ff-column-summary ff-muted truncate text-sm">{{ $column['summary'] }}</span>
+        @endif
     </div>
 
     @if($createAction || count($actions) > 0)

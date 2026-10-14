@@ -13,6 +13,7 @@ use Relaticle\Flowforge\Concerns\HasBoardFilters;
 use Relaticle\Flowforge\Concerns\HasBoardRecords;
 use Relaticle\Flowforge\Concerns\HasCardLabels;
 use Relaticle\Flowforge\Concerns\HasCardSchema;
+use Relaticle\Flowforge\Concerns\HasColumnSummaries;
 use Relaticle\Flowforge\Concerns\InteractsWithKanbanQuery;
 use Relaticle\Flowforge\Contracts\HasBoard;
 
@@ -26,6 +27,7 @@ class Board extends ViewComponent
     use HasBoardRecords;
     use HasCardLabels;
     use HasCardSchema;
+    use HasColumnSummaries;
     use InteractsWithKanbanQuery;
 
     protected string $view = 'flowforge::index';
@@ -113,6 +115,7 @@ class Board extends ViewComponent
                 'icon' => $column->getIcon(),
                 'items' => $formattedRecords,
                 'total' => $allCounts[$columnId] ?? 0,
+                'summary' => $this->getColumnSummary($column),
             ];
         }
 

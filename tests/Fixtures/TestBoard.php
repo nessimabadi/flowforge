@@ -26,6 +26,10 @@ class TestBoard extends BoardPage
 
     public bool $hideCreateAction = false;
 
+    public bool $withSummary = false;
+
+    public bool $nullSummary = false;
+
     public function getEloquentQuery(): Builder
     {
         return Task::query();
@@ -50,6 +54,11 @@ class TestBoard extends BoardPage
                         'order_position' => '65535.0000000000',
                     ])
                 : null)
+            ->columnSummary(match (true) {
+                $this->nullSummary => fn (): ?string => null,
+                $this->withSummary => fn (Builder $columnQuery): string => $columnQuery->count() . ' shown',
+                default => null,
+            })
             ->columnIdentifier('status')
             ->positionIdentifier('order_position')
             ->columns([
