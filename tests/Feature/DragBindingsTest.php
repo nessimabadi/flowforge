@@ -87,3 +87,13 @@ test('the add row on a numeric column creates the card', function () {
 
     expect(Task::where('title', 'Numeric card')->value('status'))->toBe('2');
 });
+
+test('the resting header count is server text a re-render can update', function () {
+    Task::create(['title' => 'One', 'status' => 'todo', 'order_position' => '65535.0000000000']);
+    Task::create(['title' => 'Two', 'status' => 'todo', 'order_position' => '131070.0000000000']);
+
+    Livewire::test(TestBoard::class, ['todoLimit' => 3])
+        ->assertSeeHtml('data-total="2"')
+        ->assertSeeHtml('<span x-show="! dragSource">2/3</span>')
+        ->assertSeeHtml("displayCount('todo', Number(\$el.parentElement.dataset.total))");
+});
