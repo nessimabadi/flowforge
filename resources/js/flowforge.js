@@ -12,6 +12,8 @@ const FLOWFORGE_TOKENS = [
     '--ff-duration',
 ];
 
+const sortablesAwaitingDrag = new WeakSet();
+
 export default function flowforge({ state }) {
     return {
         state,
@@ -34,6 +36,12 @@ export default function flowforge({ state }) {
 
         configureSortable(el) {
             if (!el.sortable || el.sortable.options.forceFallback) {
+                return;
+            }
+
+            if (window.Sortable.active) {
+                this.configureSortableAfterDrag(el);
+
                 return;
             }
 
@@ -80,8 +88,34 @@ export default function flowforge({ state }) {
             });
         },
 
+        configureSortableAfterDrag(el) {
+            if (sortablesAwaitingDrag.has(el)) {
+                return;
+            }
+
+            sortablesAwaitingDrag.add(el);
+
+            // destroy() runs _nulling() on Sortable's global state, which would kill the drag in progress.
+            const retry = () => {
+                if (window.Sortable.active) {
+                    requestAnimationFrame(retry);
+
+                    return;
+                }
+
+                sortablesAwaitingDrag.delete(el);
+
+                if (el.isConnected) {
+                    this.configureSortable(el);
+                }
+            };
+
+            requestAnimationFrame(retry);
+        },
+
         startDrag(event) {
             this.stopTrackingPointer?.();
+            this.copyTokensToGhost();
 
             this.dragSource = {
                 column: event.from.dataset.columnId,

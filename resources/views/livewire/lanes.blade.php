@@ -13,7 +13,7 @@
         <div
             class="sticky top-0 z-10 grid gap-x-5 pt-1"
             style="grid-column: 1 / -1; grid-template-columns: {{ $tracks }}; background-color: var(--ff-board-bg);"
-            wire:key="lane-headers"
+            wire:key="lane-grid-headers"
         >
             @foreach ($columns as $columnId => $column)
                 <div
@@ -78,7 +78,7 @@
                         <button
                             type="button"
                             class="ff-add-row rounded-lg px-3 py-2 text-left text-sm"
-                            wire:click="loadMoreItems(@js($columnId), null, @js($lane['id']))"
+                            wire:click="loadMoreItems(@js((string) $columnId), null, @js($lane['id']))"
                             wire:key="more-cards-{{ $lane['id'] }}-{{ $columnId }}"
                         >
                             {{ __('flowforge::flowforge.show_more_cards', ['count' => $cell['total'] - count($cell['items'])]) }}

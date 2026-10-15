@@ -2,7 +2,9 @@
 
 declare(strict_types=1);
 
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Exceptions;
 use Livewire\Livewire;
 use Relaticle\Flowforge\Grouping;
 use Relaticle\Flowforge\Tests\Fixtures\Task;
@@ -137,11 +139,14 @@ test('lane ids are ignored while the board is not grouped', function () {
 });
 
 test('a lane callback that violates a unique key is refused and the column move rolls back', function () {
+    Exceptions::fake();
     $this->task->assignees()->attach([$this->emma->id, $this->chloe->id]);
 
     Livewire::test(TestGroupedBoard::class, ['groupBy' => 'attach'])
         ->call('moveCard', (string) $this->task->id, 'in_progress', null, null, (string) $this->emma->id, (string) $this->chloe->id)
         ->assertNotified(__('flowforge::flowforge.lane_write_failed'));
+
+    Exceptions::assertReported(UniqueConstraintViolationException::class);
 
     expect($this->task->fresh()->status)->toBe('todo')
         ->and($this->task->assignees()->pluck('users.id')->sort()->values()->all())

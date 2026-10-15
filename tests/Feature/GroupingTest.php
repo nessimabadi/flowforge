@@ -49,6 +49,15 @@ test('attribute lanes come from the cards in view, busiest first', function () {
         ->and((string) $lanes[0]->getLabel())->toBe('Low');
 });
 
+test('attribute lanes survive a board query with a bound group by and having', function () {
+    groupedTask('Low one', 'todo', 'low', '65535.0000000000');
+    groupedTask('High one', 'todo', 'high', '131070.0000000000');
+
+    $board = Livewire::test(TestGroupedBoard::class, ['boundHaving' => true])->instance()->getBoard();
+
+    expect(laneIds($board->getLaneViewData($board->getGrouping('priority'), 10, [])))->toBe(['high', 'low']);
+});
+
 test('attribute lanes follow the board search', function () {
     groupedTask('Low one', 'todo', 'low', '65535.0000000000');
     groupedTask('High one', 'todo', 'high', '131070.0000000000');
@@ -336,6 +345,15 @@ test('a string backed enum accepts the int a driver returns', function () {
     $lane = $board->getLaneViewData($board->getGrouping('estimated_hours'), 10, [])['lanes'][0];
 
     expect((string) $lane['label'])->toBe('Tier one');
+});
+
+test('a non numeric value in an int backed enum column keeps its raw label', function () {
+    groupedTask('Odd', 'todo', 'urgent', '65535.0000000000');
+
+    $lane = Grouping::attribute('priority')->getLanes(CastTask::query())[0];
+
+    expect($lane->getName())->toBe('urgent')
+        ->and((string) $lane->getLabel())->toBe('Urgent');
 });
 
 test('raw values label their own lane', function () {

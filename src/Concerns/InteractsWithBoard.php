@@ -364,7 +364,9 @@ trait InteractsWithBoard
 
         try {
             $grouping->moveCard($card, $from, $to);
-        } catch (QueryException) {
+        } catch (QueryException $exception) {
+            report($exception);
+
             throw CardMoveRejectedException::because(__('flowforge::flowforge.lane_write_failed'));
         }
     }
@@ -502,10 +504,10 @@ trait InteractsWithBoard
     public function loadMoreItems(string $columnId, ?int $count = null, ?string $laneId = null): void
     {
         $perPage = $this->getBoard()->getCardsPerColumn();
-        $count = min(max($count ?? $perPage, 1), $perPage);
+        $count = max($count ?? $perPage, 1);
 
         if ($laneId !== null) {
-            $this->cellCardLimits[$laneId][$columnId] = ($this->cellCardLimits[$laneId][$columnId] ?? $perPage) + $count;
+            $this->cellCardLimits[$laneId][$columnId] = ($this->cellCardLimits[$laneId][$columnId] ?? $perPage) + min($count, $perPage);
 
             return;
         }

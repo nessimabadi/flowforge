@@ -184,6 +184,8 @@ class Grouping extends Component
         $query->reorder();
         $query->groups = null;
         $query->havings = null;
+        $query->bindings['groupBy'] = [];
+        $query->bindings['having'] = [];
         $query->distinct = false;
         $query->limit = null;
         $query->offset = null;
@@ -204,7 +206,8 @@ class Grouping extends Component
             ->map(function (object $row) use ($attribute, $column, $enum): Lane {
                 $value = $row->{$column};
                 $name = is_bool($value) ? ($value ? '1' : '0') : (string) $value;
-                $case = $enum ? $enum::tryFrom(static::coerceToBacking($enum, $value)) : null;
+                $backing = $enum ? static::coerceToBacking($enum, $value) : null;
+                $case = $backing === null ? null : $enum::tryFrom($backing);
 
                 return Lane::make($name)
                     ->label($case instanceof HasLabel ? $case->getLabel() : Lane::defaultLabel($name))

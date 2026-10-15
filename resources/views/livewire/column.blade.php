@@ -91,7 +91,7 @@
 
         @unless($isCollapsed)
             <div class="px-2 pb-2">
-                <x-flowforge::add-card-row :columnId="$columnId" :cardLabel="$config['cardLabel']" :disabled="$column['isFull'] ?? false" />
+                <x-flowforge::add-card-row :columnId="(string) $columnId" :cardLabel="$config['cardLabel']" :disabled="$column['isFull'] ?? false" />
             </div>
         @endunless
     </div>

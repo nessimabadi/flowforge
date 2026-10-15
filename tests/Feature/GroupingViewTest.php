@@ -156,7 +156,7 @@ test('every part of the lane grid is keyed', function () {
 
     Livewire::test(TestGroupedBoard::class, ['cardsPerCell' => 1, 'lanesPerPage' => 1])
         ->set('groupBy', 'priority')
-        ->assertSeeHtml('wire:key="lane-headers"')
+        ->assertSeeHtml('wire:key="lane-grid-headers"')
         ->assertSeeHtml('wire:key="lane-header-todo"')
         ->assertSeeHtml('wire:key="lane-header-in_progress"')
         ->assertSeeHtml('wire:key="lane-low"')
@@ -198,14 +198,37 @@ test('a client cannot overflow or inflate lane paging', function () {
         ->assertSet('cellCardLimits.low.todo', 16);
 });
 
-test('a client cannot inflate flat column paging', function () {
+test('flat column paging loads up to the requested count', function () {
     foreach (range(1, 10) as $index) {
         viewTask("Card {$index}", 'low', (string) ($index * 65535) . '.0000000000');
     }
 
     Livewire::test(TestGroupedBoard::class, ['cardsPerCell' => 2])
-        ->call('loadMoreItems', 'todo', PHP_INT_MAX)
-        ->assertSet('columnCardLimits.todo', 4);
+        ->call('loadMoreItems', 'todo', 4)
+        ->assertSet('columnCardLimits.todo', 6)
+        ->call('loadMoreItems', 'todo', 100)
+        ->assertSet('columnCardLimits.todo', 10);
+});
+
+test('flat column paging caps an overflow count at the column total', function () {
+    foreach (range(1, 10) as $index) {
+        viewTask("Card {$index}", 'low', (string) ($index * 65535) . '.0000000000');
+    }
+
+    $component = Livewire::test(TestGroupedBoard::class, ['cardsPerCell' => 2])
+        ->call('loadMoreItems', 'todo', PHP_INT_MAX);
+
+    expect($component->get('columnCardLimits')['todo'])->toBeInt()->toBe(10);
+});
+
+test('flat column paging treats a negative count as one', function () {
+    foreach (range(1, 10) as $index) {
+        viewTask("Card {$index}", 'low', (string) ($index * 65535) . '.0000000000');
+    }
+
+    Livewire::test(TestGroupedBoard::class, ['cardsPerCell' => 2])
+        ->call('loadMoreItems', 'todo', -50)
+        ->assertSet('columnCardLimits.todo', 3);
 });
 
 test('a client cannot write paging state', function (string $property, mixed $value) {

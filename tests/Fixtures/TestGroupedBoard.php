@@ -31,11 +31,19 @@ class TestGroupedBoard extends BoardPage
 
     public bool $duplicateOnPersist = false;
 
+    public bool $boundHaving = false;
+
     public array $authorizedLanes = [];
 
     public function getEloquentQuery(): Builder
     {
-        return Task::query()->with('assignees');
+        $query = Task::query()->with('assignees');
+
+        if ($this->boundHaving) {
+            $query->groupBy('tasks.id')->havingRaw('count(*) > ?', [0]);
+        }
+
+        return $query;
     }
 
     public function board(Board $board): Board

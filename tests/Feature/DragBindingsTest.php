@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Filament\Actions\Testing\TestAction;
 use Livewire\Livewire;
 use Relaticle\Flowforge\Board;
 use Relaticle\Flowforge\Column;
@@ -69,4 +70,20 @@ test('numeric column ids are emitted as strings', function () {
         ->toContain("displayCount('2'")
         ->toContain('dragOverColumn === &quot;2&quot;')
         ->not->toContain('dragOverColumn === 2');
+});
+
+test('the add row on a numeric column carries the column as a string', function () {
+    $html = Livewire::test(DragBindingsNumericBoard::class, ['withCreateAction' => true])->html();
+
+    expect($html)
+        ->toContain('\u0022column\u0022:\u00222\u0022')
+        ->not->toContain('\u0022column\u0022:2');
+});
+
+test('the add row on a numeric column creates the card', function () {
+    Livewire::test(DragBindingsNumericBoard::class, ['withCreateAction' => true])
+        ->assertActionEnabled(TestAction::make('createTask')->arguments(['column' => '2']))
+        ->callAction(TestAction::make('createTask')->arguments(['column' => '2']), ['title' => 'Numeric card']);
+
+    expect(Task::where('title', 'Numeric card')->value('status'))->toBe('2');
 });
