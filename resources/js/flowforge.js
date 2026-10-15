@@ -14,6 +14,8 @@ const FLOWFORGE_TOKENS = [
 
 const sortablesAwaitingDrag = new WeakSet();
 
+const sortableIsBusy = () => window.Sortable.active || window.Sortable.dragged;
+
 export default function flowforge({ state }) {
     return {
         state,
@@ -39,7 +41,7 @@ export default function flowforge({ state }) {
                 return;
             }
 
-            if (window.Sortable.active) {
+            if (sortableIsBusy()) {
                 this.configureSortableAfterDrag(el);
 
                 return;
@@ -95,9 +97,10 @@ export default function flowforge({ state }) {
 
             sortablesAwaitingDrag.add(el);
 
-            // destroy() runs _nulling() on Sortable's global state, which would kill the drag in progress.
+            // destroy() runs _nulling() on Sortable's global state, which kills a live drag or a pending press.
+            // dragged is set on pointerdown, active only a tick after the first move.
             const retry = () => {
-                if (window.Sortable.active) {
+                if (sortableIsBusy()) {
                     requestAnimationFrame(retry);
 
                     return;

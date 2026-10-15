@@ -13,7 +13,7 @@
         <div
             class="sticky top-0 z-10 grid gap-x-5 pt-1"
             style="grid-column: 1 / -1; grid-template-columns: {{ $tracks }}; background-color: var(--ff-board-bg);"
-            wire:key="lane-grid-headers"
+            wire:key="column-headers"
         >
             @foreach ($columns as $columnId => $column)
                 <div

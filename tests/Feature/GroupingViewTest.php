@@ -156,7 +156,7 @@ test('every part of the lane grid is keyed', function () {
 
     Livewire::test(TestGroupedBoard::class, ['cardsPerCell' => 1, 'lanesPerPage' => 1])
         ->set('groupBy', 'priority')
-        ->assertSeeHtml('wire:key="lane-grid-headers"')
+        ->assertSeeHtml('wire:key="column-headers"')
         ->assertSeeHtml('wire:key="lane-header-todo"')
         ->assertSeeHtml('wire:key="lane-header-in_progress"')
         ->assertSeeHtml('wire:key="lane-low"')

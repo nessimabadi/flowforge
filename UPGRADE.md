@@ -65,7 +65,7 @@ The dragged card is a real element, so it can lift and tilt, and touch works. CS
 - The `flowforge::column-count` component takes `column` and `columnId` instead of `color` and `total`. A published copy of a v4 view that renders it breaks.
 - The `flowforge::empty-column` component is removed.
 - `$columnCardLimits` is now `#[Locked]`, as are the new lane paging properties. JavaScript or a view that writes them from the browser gets a `CannotUpdateLockedPropertyException`. Call `loadMoreItems()` or `loadAllItems()` instead.
-- `loadMoreItems()` clamps the count it loads into a lane cell to between 1 and `cardsPerColumn()`. The flat board still loads up to the count you pass, capped at the column total.
+- `loadMoreItems()` clamps the count it loads into a lane cell to between 1 and `cardsPerColumn()`. The flat board still loads up to the count you pass, capped at the column total. A count below 1 now loads one card: v4 had no lower bound, so 0 loaded nothing and a negative count shrank the column.
 
 #### Position helpers gained a lane parameter
 

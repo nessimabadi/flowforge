@@ -40,7 +40,7 @@ class TestGroupedBoard extends BoardPage
         $query = Task::query()->with('assignees');
 
         if ($this->boundHaving) {
-            $query->groupBy('tasks.id')->havingRaw('count(*) > ?', [0]);
+            $query->groupByRaw('tasks.id, ?', [1])->havingRaw('count(*) > ?', [0]);
         }
 
         return $query;
