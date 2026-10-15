@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 use Relaticle\Flowforge\Tests\Fixtures\Task;
 use Relaticle\Flowforge\Tests\Fixtures\TestBoard;
@@ -79,4 +80,27 @@ test('reordering inside a full column is allowed', function () {
 
     expect($moved)->toBeTrue()
         ->and((float) $cardC->fresh()->order_position)->toBeLessThan((float) $this->cardA->fresh()->order_position);
+});
+
+test('a card moves between two cards of a board whose query left-joins another table', function () {
+    $above = Task::create(['title' => 'Above', 'status' => 'in_progress', 'order_position' => '1000.0000000000']);
+    $below = Task::create(['title' => 'Below', 'status' => 'in_progress', 'order_position' => '2000.0000000000']);
+    DB::table('task_states')->insert(['task_id' => $above->id, 'state_value' => 'open']);
+
+    Livewire::test(TestBoard::class, ['leftJoinState' => true])
+        ->call('moveCard', (string) $this->cardA->id, 'in_progress', (string) $above->id, (string) $below->id)
+        ->assertDispatched('kanban-card-moved');
+
+    expect($this->cardA->fresh()->status)->toBe('in_progress')
+        ->and((float) $this->cardA->fresh()->order_position)->toBeGreaterThan(1000.0)->toBeLessThan(2000.0);
+});
+
+test('a reference card outside the board query does not place the moved card', function () {
+    $outside = Task::create(['title' => 'Outside', 'status' => 'in_progress', 'priority' => 'low', 'order_position' => '9000000.0000000000']);
+
+    Livewire::test(TestBoard::class, ['onlyPriority' => 'medium'])
+        ->call('moveCard', (string) $this->cardA->id, 'in_progress', (string) $outside->id)
+        ->assertDispatched('kanban-card-moved');
+
+    expect((float) $this->cardA->fresh()->order_position)->toBeLessThan(9000000.0);
 });

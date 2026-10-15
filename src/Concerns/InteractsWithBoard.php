@@ -304,13 +304,8 @@ trait InteractsWithBoard
             $columnField = $board->getColumnIdentifierAttribute();
 
             // LOCK reference cards for reading to prevent stale data
-            $afterCard = $afterCardId
-                ? (clone $query)->whereKey($afterCardId)->lockForUpdate()->first()
-                : null;
-
-            $beforeCard = $beforeCardId
-                ? (clone $query)->whereKey($beforeCardId)->lockForUpdate()->first()
-                : null;
+            $afterCard = $this->lockBoardCard($query, $afterCardId);
+            $beforeCard = $this->lockBoardCard($query, $beforeCardId);
 
             // Get positions from locked cards
             $afterPos = $afterCard?->getAttribute($positionField);
@@ -329,12 +324,8 @@ trait InteractsWithBoard
                     $this->rebalanceColumn($targetColumnId);
 
                     // Recalculate position after rebalancing
-                    $afterCard = $afterCardId
-                        ? (clone $query)->whereKey($afterCardId)->lockForUpdate()->first()
-                        : null;
-                    $beforeCard = $beforeCardId
-                        ? (clone $query)->whereKey($beforeCardId)->lockForUpdate()->first()
-                        : null;
+                    $afterCard = $this->lockBoardCard($query, $afterCardId);
+                    $beforeCard = $this->lockBoardCard($query, $beforeCardId);
 
                     $afterPos = $afterCard?->getAttribute($positionField);
                     $beforePos = $beforeCard?->getAttribute($positionField);
@@ -353,6 +344,23 @@ trait InteractsWithBoard
         });
 
         return $newPosition;
+    }
+
+    protected function lockBoardCard(Builder $boardQuery, ?string $cardId): ?Model
+    {
+        if (blank($cardId)) {
+            return null;
+        }
+
+        $model = $boardQuery->getModel();
+        $keyName = $model->getQualifiedKeyName();
+
+        // Postgres refuses FOR UPDATE on the nullable side of an outer join, so the
+        // board query only proves membership and the lock lands on the base table.
+        return $model->newModelQuery()
+            ->whereIn($keyName, (clone $boardQuery)->whereKey($cardId)->select($keyName))
+            ->lockForUpdate()
+            ->first();
     }
 
     /**

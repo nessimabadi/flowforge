@@ -50,9 +50,17 @@ class TestBoard extends BoardPage
 
     public int $lockWaitSeconds = 5;
 
+    public bool $leftJoinState = false;
+
+    public ?string $onlyPriority = null;
+
     public function getEloquentQuery(): Builder
     {
-        return Task::query();
+        return Task::query()
+            ->when($this->leftJoinState, fn (Builder $query): Builder => $query
+                ->leftJoin('task_states', 'task_states.task_id', '=', 'tasks.id')
+                ->select('tasks.*', 'task_states.state_value'))
+            ->when($this->onlyPriority, fn (Builder $query, string $priority): Builder => $query->where('tasks.priority', $priority));
     }
 
     public function board(Board $board): Board
