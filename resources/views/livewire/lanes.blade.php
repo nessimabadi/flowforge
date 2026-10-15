@@ -8,7 +8,7 @@
     $tracks = 'repeat('.count($columns).', 300px)';
 @endphp
 
-<div class="h-full overflow-auto" style="max-height: calc(100vh - 13rem);">
+<div class="ff-lanes h-full overflow-auto" style="max-height: calc(100vh - 13rem);">
     <div class="grid gap-x-5 gap-y-2 pb-4" style="grid-template-columns: {{ $tracks }};">
         <div
             class="sticky top-0 z-10 grid gap-x-5 pt-1"
