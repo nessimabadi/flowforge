@@ -120,6 +120,10 @@ export default function flowforge({ state }) {
             this.stopTrackingPointer?.();
             this.copyTokensToGhost();
 
+            // WebKit turns a fallback-mode drag into a text selection across the board.
+            window.getSelection()?.removeAllRanges();
+            document.documentElement.classList.add('ff-dragging');
+
             this.dragSource = {
                 column: event.from.dataset.columnId,
                 lane: event.from.dataset.laneId ?? null,
@@ -172,6 +176,7 @@ export default function flowforge({ state }) {
         },
 
         endDrag() {
+            document.documentElement.classList.remove('ff-dragging');
             this.stopTrackingPointer?.();
             this.stopTrackingPointer = null;
             this.dragOverColumn = null;
