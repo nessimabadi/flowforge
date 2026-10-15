@@ -61,7 +61,7 @@
                 @scroll.throttle.100ms="handleColumnScroll($event, '{{ $columnId }}')"
             @endif
             @class([
-                'flowforge-column-content kanban-cards min-h-16 flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain',
+                'flowforge-column-content kanban-cards flex min-h-16 flex-1 flex-col overflow-y-auto overflow-x-hidden overscroll-y-contain',
                 'p-2' => ! $isCollapsed,
                 'p-0' => $isCollapsed,
             ])
@@ -87,12 +87,12 @@
                     </div>
                 </div>
             @endif
-        </div>
 
-        @unless($isCollapsed)
-            <div class="px-2 pb-2">
-                <x-flowforge::add-card-row :columnId="(string) $columnId" :cardLabel="$config['cardLabel']" :disabled="$column['isFull'] ?? false" />
-            </div>
-        @endunless
+            @unless($isCollapsed)
+                <div class="order-last">
+                    <x-flowforge::add-card-row :columnId="(string) $columnId" :cardLabel="$config['cardLabel']" :disabled="$column['isFull'] ?? false" />
+                </div>
+            @endunless
+        </div>
     </div>
 </div>
