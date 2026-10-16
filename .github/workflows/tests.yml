@@ -90,6 +90,7 @@ jobs:
 
   pgsql:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     name: PostgreSQL - P8.4 - L13.*
 
