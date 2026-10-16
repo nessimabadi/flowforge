@@ -17,6 +17,11 @@ done < <(
         | grep -E '(Test\.php$|^tests/Fixtures/|^tests/database/migrations/|^tests/StandaloneTestCase\.php$)'
 )
 
+if [ "${#paths[@]}" -eq 0 ]; then
+    echo "No frozen paths found at $TAG." >&2
+    exit 2
+fi
+
 changed=$(
     {
         git diff --name-only "$TAG" -- "${paths[@]}"
