@@ -23,6 +23,8 @@ use Orchestra\Testbench\TestCase as Orchestra;
 use Relaticle\Flowforge\FlowforgeServiceProvider;
 use Relaticle\Flowforge\Tests\Fixtures\TestPanelProvider;
 
+use function Orchestra\Testbench\load_migration_paths;
+
 class TestCase extends Orchestra
 {
     use LazilyRefreshDatabase;
@@ -65,11 +67,25 @@ class TestCase extends Orchestra
     protected function defineEnvironment($app): void
     {
         config()->set('database.default', 'testing');
-        config()->set('database.connections.testing', [
-            'driver' => 'sqlite',
-            'database' => ':memory:',
-            'prefix' => '',
-        ]);
+        config()->set('database.connections.testing', match (env('FLOWFORGE_TEST_DB')) {
+            'pgsql' => [
+                'driver' => 'pgsql',
+                'host' => env('DB_HOST', '127.0.0.1'),
+                'port' => env('DB_PORT', '5432'),
+                'database' => env('DB_DATABASE', 'flowforge_testing'),
+                'username' => env('DB_USERNAME', 'postgres'),
+                'password' => env('DB_PASSWORD', ''),
+                'charset' => 'utf8',
+                'prefix' => '',
+                'search_path' => 'public',
+                'sslmode' => 'prefer',
+            ],
+            default => [
+                'driver' => 'sqlite',
+                'database' => ':memory:',
+                'prefix' => '',
+            ],
+        });
 
         // Set up app key for session encryption
         config()->set('app.key', 'base64:' . base64_encode(random_bytes(32)));
@@ -90,6 +106,6 @@ class TestCase extends Orchestra
 
     protected function defineDatabaseMigrations(): void
     {
-        $this->loadMigrationsFrom(__DIR__ . '/database/migrations');
+        load_migration_paths($this->app, __DIR__ . '/database/migrations');
     }
 }
