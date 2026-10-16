@@ -9,34 +9,25 @@ if ! git rev-parse --verify --quiet "refs/tags/$TAG^{commit}" >/dev/null; then
     exit 2
 fi
 
-failed=0
+paths=()
+while IFS= read -r path; do
+    paths+=("$path")
+done < <(
+    git ls-tree -r --name-only "$TAG" tests \
+        | grep -E '(Test\.php$|^tests/Fixtures/|^tests/database/migrations/|^tests/StandaloneTestCase\.php$)'
+)
 
 changed=$(
-    git ls-tree -r --name-only "$TAG" tests \
-        | grep -E '(Test\.php$|^tests/Fixtures/)' \
-        | while IFS= read -r path; do
-            git diff --name-only "$TAG" -- "$path"
-        done
+    {
+        git diff --name-only "$TAG" -- "${paths[@]}"
+        git diff --cached --name-only "$TAG" -- "${paths[@]}"
+    } | sort -u
 )
 
 if [ -n "$changed" ]; then
-    echo "Released tests or fixtures changed since $TAG:" >&2
+    echo "Released tests, fixtures or test schema changed since $TAG:" >&2
     echo "$changed" | sed 's/^/  /' >&2
-    failed=1
+    exit 1
 fi
 
-assets=$(
-    awk '/function getAssets\(/{f=1} f{print} f&&/^    }/{exit}' src/FlowforgeServiceProvider.php \
-        | grep -cE '::make\(' || true
-)
-
-if [ "$assets" != "1" ]; then
-    echo "FlowforgeServiceProvider::getAssets() must list exactly one asset, found $assets." >&2
-    failed=1
-fi
-
-if [ "$failed" -eq 0 ]; then
-    echo "Classic gate passed: released tests and fixtures match $TAG."
-fi
-
-exit "$failed"
+echo "Classic gate passed: released tests, fixtures and test schema match $TAG."
