@@ -123,7 +123,7 @@ trait HasBoardRecords
             : $this->getCardsPerColumn();
 
         $positionField = $this->getPositionIdentifierAttribute();
-        $keyName = $queryClone->getModel()->getQualifiedKeyName();
+        $keyName = $queryClone->getModel()->getKeyName();
 
         if ($positionField && $this->modelHasColumn($queryClone->getModel(), $positionField)) {
             $queryClone->orderBy($positionField, 'asc')
@@ -223,7 +223,7 @@ trait HasBoardRecords
 
         $statusField = $this->getColumnIdentifierAttribute();
         $positionField = $this->getPositionIdentifierAttribute();
-        $keyName = $query->getModel()->getQualifiedKeyName();
+        $keyName = $query->getModel()->getKeyName();
 
         return (clone $query)
             ->where($statusField, $columnId)
@@ -247,7 +247,7 @@ trait HasBoardRecords
 
         $statusField = $this->getColumnIdentifierAttribute();
         $positionField = $this->getPositionIdentifierAttribute();
-        $keyName = $query->getModel()->getQualifiedKeyName();
+        $keyName = $query->getModel()->getKeyName();
 
         return (clone $query)
             ->where($statusField, $columnId)
@@ -271,7 +271,7 @@ trait HasBoardRecords
 
         $statusField = $this->getColumnIdentifierAttribute();
         $positionField = $this->getPositionIdentifierAttribute();
-        $keyName = $query->getModel()->getQualifiedKeyName();
+        $keyName = $query->getModel()->getKeyName();
 
         $record = (clone $query)
             ->where($statusField, $columnId)

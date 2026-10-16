@@ -366,7 +366,7 @@ trait InteractsWithBoard
         // Postgres refuses FOR UPDATE on the nullable side of an outer join, so the
         // board query only proves membership and the lock lands on the base table.
         return $boardQuery->getModel()->newModelQuery()
-            ->whereKey($boardCard->getKey())
+            ->whereKey($cardId)
             ->lockForUpdate()
             ->first();
     }
@@ -782,7 +782,7 @@ trait InteractsWithBoard
         $board = $this->getBoard();
         $statusField = $board->getColumnIdentifierAttribute();
         $positionField = $board->getPositionIdentifierAttribute();
-        $keyName = $query->getModel()->getQualifiedKeyName();
+        $keyName = $query->getModel()->getKeyName();
         $queryClone = (clone $query)->where($statusField, $columnId);
 
         if ($position === 'top') {

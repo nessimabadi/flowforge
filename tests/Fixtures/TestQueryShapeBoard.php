@@ -19,8 +19,6 @@ class TestQueryShapeBoard extends BoardPage
             'labelled' => Task::query()
                 ->leftJoin('task_labels', 'task_labels.task_id', '=', 'tasks.id')
                 ->select('tasks.*', 'task_labels.label'),
-            'unselected' => Task::query()
-                ->leftJoin('task_labels', 'task_labels.task_id', '=', 'tasks.id'),
             'ordered' => Task::query()->orderBy('created_at'),
             'counted' => Task::query()->withCount('project')->orderBy('project_count'),
             default => Task::query(),

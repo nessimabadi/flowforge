@@ -35,7 +35,7 @@ final readonly class PositionRebalancer
         string $columnId,
         string $positionField
     ): int {
-        $keyName = $query->getModel()->getQualifiedKeyName();
+        $keyName = $query->getModel()->getKeyName();
         $records = (clone $query)
             ->where($columnField, $columnId)
             ->whereNotNull($positionField)
