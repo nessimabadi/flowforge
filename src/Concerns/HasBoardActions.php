@@ -28,6 +28,8 @@ trait HasBoardActions
      */
     protected array $columnActions = [];
 
+    protected ?Action $createCardAction = null;
+
     protected ?string $cardAction = null;
 
     protected array $registeredCardActions = [];
@@ -70,6 +72,18 @@ trait HasBoardActions
         $this->cardAction = $this->evaluate($action);
 
         return $this;
+    }
+
+    public function createCardAction(Action | Closure | null $action): static
+    {
+        $this->createCardAction = $this->evaluate($action);
+
+        return $this;
+    }
+
+    public function getCreateCardAction(): ?Action
+    {
+        return $this->createCardAction;
     }
 
     /**
@@ -146,6 +160,27 @@ trait HasBoardActions
         }
 
         return null;
+    }
+
+    /**
+     * @param  array<Action|ActionGroup>  $recordActions
+     * @return array{url: ?string, openInNewTab: bool, action: ?string}
+     */
+    public function getCardLink(array $recordActions): array
+    {
+        $cardAction = $this->resolveCardAction($recordActions);
+
+        if ($cardAction?->isHidden()) {
+            return ['url' => null, 'openInNewTab' => false, 'action' => null];
+        }
+
+        $url = $cardAction?->shouldPostToUrl() ? null : $cardAction?->getUrl();
+
+        return [
+            'url' => filled($url) ? $url : null,
+            'openInNewTab' => (bool) $cardAction?->shouldOpenUrlInNewTab(),
+            'action' => filled($url) ? null : $this->getCardAction(),
+        ];
     }
 
     /**
