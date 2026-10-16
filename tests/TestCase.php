@@ -21,6 +21,7 @@ use Livewire\LivewireServiceProvider;
 use Orchestra\Testbench\Concerns\WithWorkbench;
 use Orchestra\Testbench\TestCase as Orchestra;
 use Relaticle\Flowforge\FlowforgeServiceProvider;
+use Relaticle\Flowforge\Tests\Fixtures\Modern\ModernPanelProvider;
 use Relaticle\Flowforge\Tests\Fixtures\TestPanelProvider;
 
 use function Orchestra\Testbench\load_migration_paths;
@@ -57,6 +58,7 @@ class TestCase extends Orchestra
             WidgetsServiceProvider::class,
             FlowforgeServiceProvider::class,
             TestPanelProvider::class,
+            ModernPanelProvider::class,
         ];
 
         sort($providers);

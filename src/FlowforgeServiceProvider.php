@@ -4,6 +4,7 @@ namespace Relaticle\Flowforge;
 
 use Filament\Support\Assets\AlpineComponent;
 use Filament\Support\Assets\Asset;
+use Filament\Support\Assets\Css;
 use Filament\Support\Facades\FilamentAsset;
 use Filament\Support\Facades\FilamentIcon;
 use Illuminate\Database\Schema\Blueprint;
@@ -64,6 +65,8 @@ class FlowforgeServiceProvider extends PackageServiceProvider
             $this->getAssetPackageName()
         );
 
+        $this->registerModernAssets();
+
         FilamentAsset::registerScriptData(
             $this->getScriptData(),
             $this->getAssetPackageName()
@@ -93,6 +96,14 @@ class FlowforgeServiceProvider extends PackageServiceProvider
         Blade::component('flowforge::livewire.empty-column', 'flowforge::empty-column');
         Blade::component('flowforge::livewire.card', 'flowforge::card');
         Blade::component('flowforge::livewire.column-count', 'flowforge::column-count');
+
+        Blade::component('flowforge::modern.livewire.column', 'flowforge::modern.column');
+        Blade::component('flowforge::modern.livewire.column-header', 'flowforge::modern.column-header');
+        Blade::component('flowforge::modern.livewire.card', 'flowforge::modern.card');
+        Blade::component('flowforge::modern.livewire.column-count', 'flowforge::modern.column-count');
+        Blade::component('flowforge::modern.livewire.add-card-row', 'flowforge::modern.add-card-row');
+        Blade::component('flowforge::modern.livewire.lanes', 'flowforge::modern.lanes');
+        Blade::component('flowforge::components.grouping-picker', 'flowforge::modern.grouping-picker');
     }
 
     protected function getAssetPackageName(): ?string
@@ -108,6 +119,14 @@ class FlowforgeServiceProvider extends PackageServiceProvider
         return [
             AlpineComponent::make('flowforge', __DIR__ . '/../resources/dist/flowforge.js'),
         ];
+    }
+
+    private function registerModernAssets(): void
+    {
+        FilamentAsset::register([
+            AlpineComponent::make('flowforge-modern', __DIR__ . '/../resources/dist/flowforge-modern.js'),
+            Css::make('flowforge-modern', __DIR__ . '/../resources/css/flowforge-modern.css')->loadedOnRequest(),
+        ], $this->getAssetPackageName());
     }
 
     /**

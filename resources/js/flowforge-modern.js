@@ -1,0 +1,355 @@
+const FLOWFORGE_TOKENS = [
+    '--ff-board-bg',
+    '--ff-tray-bg',
+    '--ff-card-bg',
+    '--ff-card-ring',
+    '--ff-accent',
+    '--ff-accent-tint',
+    '--ff-danger',
+    '--ff-warning',
+    '--ff-muted',
+    '--ff-ease',
+    '--ff-duration',
+];
+
+const sortablesAwaitingDrag = new WeakSet();
+
+const sortableIsBusy = () => window.Sortable.active || window.Sortable.dragged;
+
+export default function flowforgeModern({ state }) {
+    return {
+        state,
+        isLoading: {},
+        fullyLoaded: {},
+        dragOverColumn: null,
+        dragOverLane: null,
+        dragSource: null,
+        stopTrackingPointer: null,
+
+        init() {
+            this.$wire.$on('kanban-items-loaded', (event) => {
+                const { columnId, isFullyLoaded } = event;
+
+                if (isFullyLoaded) {
+                    this.fullyLoaded[columnId] = true;
+                }
+            });
+        },
+
+        configureSortable(el) {
+            if (!el.sortable || el.sortable.options.forceFallback) {
+                return;
+            }
+
+            if (sortableIsBusy()) {
+                this.configureSortableAfterDrag(el);
+
+                return;
+            }
+
+            const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+            // SortableJS reads forceFallback only in its constructor, so the instance Filament built has to be replaced.
+            el.sortable.destroy();
+
+            el.sortable = window.Sortable.create(el, {
+                draggable: '[x-sortable-item]',
+                handle: '[x-sortable-handle]',
+                dataIdAttr: 'x-sortable-item',
+                forceFallback: true,
+                fallbackOnBody: true,
+                fallbackClass: 'ff-card-dragging',
+                ghostClass: 'ff-card-placeholder',
+                delay: 150,
+                delayOnTouchOnly: true,
+                animation: reduceMotion ? 0 : 200,
+                scrollSensitivity: 100,
+                scrollSpeed: 15,
+                forceAutoScrollFallback: true,
+                group: {
+                    name: el.getAttribute('x-sortable-group'),
+                    pull: true,
+                    put: (to, from) => this.canDrop(to.el, from.el),
+                },
+                onStart: (event) => this.startDrag(event),
+                onEnd(event) {
+                    const { item: draggedNode, to: parentNode, oldDraggableIndex, newDraggableIndex } = event;
+
+                    if (oldDraggableIndex === newDraggableIndex) {
+                        return;
+                    }
+
+                    const previousNode = parentNode.querySelectorAll(`:scope > ${this.options.draggable}`)[
+                        newDraggableIndex - 1
+                    ];
+
+                    if (previousNode) {
+                        parentNode.insertBefore(draggedNode, previousNode.nextSibling);
+                    }
+                },
+            });
+        },
+
+        configureSortableAfterDrag(el) {
+            if (sortablesAwaitingDrag.has(el)) {
+                return;
+            }
+
+            sortablesAwaitingDrag.add(el);
+
+            // destroy() runs _nulling() on Sortable's global state, which kills a live drag or a pending press.
+            // dragged is set on pointerdown, active only a tick after the first move.
+            const retry = () => {
+                if (sortableIsBusy()) {
+                    requestAnimationFrame(retry);
+
+                    return;
+                }
+
+                sortablesAwaitingDrag.delete(el);
+
+                if (el.isConnected) {
+                    this.configureSortable(el);
+                }
+            };
+
+            requestAnimationFrame(retry);
+        },
+
+        startDrag(event) {
+            this.stopTrackingPointer?.();
+            this.copyTokensToGhost();
+
+            // WebKit turns a fallback-mode drag into a text selection across the board.
+            window.getSelection()?.removeAllRanges();
+            document.documentElement.classList.add('ff-dragging');
+
+            this.dragSource = {
+                column: event.from.dataset.columnId,
+                lane: event.from.dataset.laneId ?? null,
+            };
+
+            const track = (pointerEvent) => this.trackPointer(pointerEvent);
+
+            document.addEventListener('pointermove', track, { passive: true });
+            document.addEventListener('touchmove', track, { passive: true });
+
+            this.stopTrackingPointer = () => {
+                document.removeEventListener('pointermove', track);
+                document.removeEventListener('touchmove', track);
+            };
+        },
+
+        trackPointer(pointerEvent) {
+            if (!window.Sortable.active) {
+                this.endDrag();
+
+                return;
+            }
+
+            this.copyTokensToGhost();
+
+            const point = pointerEvent.touches?.[0] ?? pointerEvent;
+            const target = document.elementFromPoint(point.clientX, point.clientY);
+            const cell = target?.closest('[data-column-id]');
+            const root = target?.closest('[data-column-root]');
+
+            this.dragOverColumn = cell?.dataset.columnId ?? root?.dataset.columnRoot ?? null;
+            this.dragOverLane = cell?.dataset.laneId ?? null;
+        },
+
+        copyTokensToGhost() {
+            const ghost = window.Sortable.ghost;
+
+            if (!ghost || ghost.dataset.ffTokens) {
+                return;
+            }
+
+            // The fallback clone lives on document.body, outside .ff-board, so it inherits none of the --ff-* tokens.
+            const board = getComputedStyle(this.$root);
+
+            for (const name of FLOWFORGE_TOKENS) {
+                ghost.style.setProperty(name, board.getPropertyValue(name));
+            }
+
+            ghost.dataset.ffTokens = 'true';
+        },
+
+        endDrag() {
+            document.documentElement.classList.remove('ff-dragging');
+            this.stopTrackingPointer?.();
+            this.stopTrackingPointer = null;
+            this.dragOverColumn = null;
+            this.dragOverLane = null;
+            this.dragSource = null;
+        },
+
+        canDrop(toEl, fromEl) {
+            if (!this.$root.contains(toEl) || !this.$root.contains(fromEl)) {
+                return false;
+            }
+
+            const toLane = toEl.dataset.laneId ?? null;
+            const fromLane = fromEl.dataset.laneId ?? null;
+
+            if (toLane !== fromLane && this.$root.dataset.lanesWritable !== 'true') {
+                return false;
+            }
+
+            return !this.isColumnBlocked(toEl.dataset.columnId, fromEl.dataset.columnId);
+        },
+
+        isColumnBlocked(columnId, sourceColumnId = this.dragSource?.column) {
+            if (!columnId || columnId === sourceColumnId) {
+                return false;
+            }
+
+            const root = this.$root.querySelector(`[data-column-root="${CSS.escape(columnId)}"]`);
+            const limit = root?.dataset.columnLimit;
+
+            if (limit === undefined || limit === '') {
+                return false;
+            }
+
+            return Number(root.dataset.columnTotal) >= Number(limit);
+        },
+
+        isCellBlocked(columnId, laneId) {
+            if (!this.dragSource) {
+                return false;
+            }
+
+            if (laneId !== this.dragSource.lane && this.$root.dataset.lanesWritable !== 'true') {
+                return true;
+            }
+
+            return this.isColumnBlocked(columnId);
+        },
+
+        displayCount(columnId, total) {
+            const source = this.dragSource?.column;
+            const target = this.dragOverColumn;
+
+            if (!source || !target || source === target || this.isColumnBlocked(target)) {
+                return total;
+            }
+
+            if (columnId === target) {
+                return total + 1;
+            }
+
+            if (columnId === source) {
+                return total - 1;
+            }
+
+            return total;
+        },
+
+        handleSortableEnd(event) {
+            this.endDrag();
+
+            const draggedNode = event.item;
+            const parentNode = event.to;
+            const dropIndex = event.newDraggableIndex ?? event.newIndex;
+            const itemSelector = ':scope > [x-sortable-item], :scope > [data-card-id]';
+            const readId = (el) => el.getAttribute('x-sortable-item') || el.getAttribute('data-card-id');
+
+            if (event.from === parentNode && event.oldDraggableIndex === event.newDraggableIndex) {
+                return;
+            }
+
+            // Filament's x-sortable re-inserts the node after items[dropIndex - 1] (filamentphp/filament#17402)
+            // but skips index 0, leaving the DOM stale on a top drop.
+            if (dropIndex === 0) {
+                const firstItem = parentNode.querySelector(itemSelector);
+
+                if (firstItem && firstItem !== draggedNode) {
+                    parentNode.insertBefore(draggedNode, firstItem);
+                }
+            }
+
+            const cardId = readId(draggedNode);
+
+            if (!cardId) {
+                console.error('Flowforge: Could not determine card ID for move operation');
+                return;
+            }
+
+            const targetColumn = parentNode.getAttribute('data-column-id');
+
+            if (!targetColumn) {
+                console.error('Flowforge: Target column ID is missing');
+                return;
+            }
+
+            const fromLane = event.from.dataset.laneId ?? null;
+            const toLane = parentNode.dataset.laneId ?? null;
+            const items = parentNode.querySelectorAll(itemSelector);
+            const index = Array.prototype.indexOf.call(items, draggedNode);
+            const afterCardId = index > 0 ? readId(items[index - 1]) : null;
+            const beforeCardId = index >= 0 && index < items.length - 1 ? readId(items[index + 1]) : null;
+
+            this.setCardState(draggedNode, true);
+
+            this.$wire.moveCard(cardId, targetColumn, afterCardId, beforeCardId, fromLane, toLane)
+                .then((moved) => {
+                    this.setCardState(draggedNode, false);
+
+                    if (moved === false) {
+                        this.revertCard(event);
+                    }
+                })
+                .catch(() => {
+                    this.setCardState(draggedNode, false);
+                    this.revertCard(event);
+                });
+        },
+
+        revertCard({ item, from, oldDraggableIndex }) {
+            item.remove();
+
+            const siblings = from.querySelectorAll(':scope > [x-sortable-item]');
+            const lastItem = siblings[siblings.length - 1];
+            const anchor = siblings[oldDraggableIndex] ?? (lastItem ? lastItem.nextSibling : from.firstChild);
+
+            from.insertBefore(item, anchor);
+        },
+
+        setCardState(cardElement, disabled) {
+            cardElement.style.opacity = disabled ? '0.7' : '';
+            cardElement.style.pointerEvents = disabled ? 'none' : '';
+        },
+
+        isLoadingColumn(columnId) {
+            return this.isLoading[columnId] || false;
+        },
+
+        isColumnFullyLoaded(columnId) {
+            return this.fullyLoaded[columnId] || false;
+        },
+
+        handleSmoothScroll(columnId) {
+            if (this.isLoadingColumn(columnId) || this.isColumnFullyLoaded(columnId)) {
+                return;
+            }
+
+            this.isLoading[columnId] = true;
+
+            this.$wire.loadMoreItems(columnId)
+                .then(() => setTimeout(() => this.isLoading[columnId] = false, 100))
+                .catch(() => this.isLoading[columnId] = false);
+        },
+
+        handleColumnScroll(event, columnId) {
+            if (this.isColumnFullyLoaded(columnId)) {
+                return;
+            }
+
+            const { scrollTop, scrollHeight, clientHeight } = event.target;
+
+            if ((scrollTop + clientHeight) / scrollHeight >= 0.8 && !this.isLoadingColumn(columnId)) {
+                this.handleSmoothScroll(columnId);
+            }
+        },
+    };
+}

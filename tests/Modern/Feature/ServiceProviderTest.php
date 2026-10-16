@@ -1,0 +1,118 @@
+<?php
+
+declare(strict_types=1);
+
+use Filament\Support\Assets\Css;
+use Filament\Support\Facades\FilamentAsset;
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Blade;
+use Relaticle\Flowforge\Board;
+use Relaticle\Flowforge\Column;
+use Relaticle\Flowforge\Commands\MakeKanbanBoardCommand;
+use Relaticle\Flowforge\FlowforgeServiceProvider;
+use Relaticle\Flowforge\Modern\BoardPage;
+
+test('service provider is registered', function () {
+    $providers = app()->getLoadedProviders();
+
+    expect($providers)->toHaveKey(FlowforgeServiceProvider::class);
+});
+
+test('artisan command is registered', function () {
+    $commands = Artisan::all();
+
+    expect($commands)->toHaveKey('flowforge:make-board');
+    expect($commands['flowforge:make-board'])->toBeInstanceOf(MakeKanbanBoardCommand::class);
+});
+
+test('package assets are defined', function () {
+    $serviceProvider = new FlowforgeServiceProvider(app());
+
+    $method = (new ReflectionClass($serviceProvider))->getMethod('getAssets');
+    $assets = $method->invoke($serviceProvider);
+
+    expect($assets)->toHaveCount(1);
+    expect($assets[0]->getId())->toBe('flowforge');
+});
+
+test('registers the modern assets apart from the classic one', function () {
+    $scripts = collect(FilamentAsset::getAlpineComponents(['relaticle/flowforge']))
+        ->map(fn ($asset): string => $asset->getId())
+        ->all();
+
+    expect($scripts)->toEqualCanonicalizing(['flowforge', 'flowforge-modern']);
+});
+
+test('blade component namespace is registered', function () {
+    $namespaces = Blade::getClassComponentNamespaces();
+
+    expect($namespaces)->toHaveKey('flowforge');
+    expect($namespaces['flowforge'])->toBe('Relaticle\\Flowforge\\View\\Components');
+});
+
+test('package views are registered', function () {
+    // Test that views can be resolved
+    expect(view()->exists('flowforge::index'))->toBeTrue();
+    expect(view()->exists('flowforge::filament.pages.board-page'))->toBeTrue();
+    expect(view()->exists('flowforge::livewire.column'))->toBeTrue();
+    expect(view()->exists('flowforge::livewire.card'))->toBeTrue();
+});
+
+test('package translations are available', function () {
+    expect(__('flowforge::flowforge.loading_more_cards'))
+        ->toBe('Loading more cards...');
+
+    expect(__('flowforge::flowforge.column_label', ['column' => 'To Do', 'count' => 2, 'cards' => 'tasks']))
+        ->toBe('To Do, 2 tasks');
+});
+
+test('package script data is configured', function () {
+    $serviceProvider = new FlowforgeServiceProvider(app());
+
+    // Use reflection to test protected getScriptData method
+    $reflection = new ReflectionClass($serviceProvider);
+    $method = $reflection->getMethod('getScriptData');
+    $method->setAccessible(true);
+    $scriptData = $method->invoke($serviceProvider);
+
+    expect($scriptData)->toHaveKey('flowforge');
+    expect($scriptData['flowforge'])->toHaveKey('baseUrl');
+    expect($scriptData['flowforge']['baseUrl'])->toBe(url('/'));
+});
+
+test('package configuration exists if defined', function () {
+    // Test that config is loaded if the file exists
+    if (file_exists(__DIR__ . '/../../../config/flowforge.php')) {
+        expect(config('flowforge'))->toBeArray();
+    } else {
+        // If no config file, that's valid too
+        expect(true)->toBeTrue();
+    }
+});
+
+test('core classes exist and are autoloadable', function () {
+    expect(class_exists(Board::class))->toBeTrue();
+    expect(class_exists(BoardPage::class))->toBeTrue();
+    expect(class_exists(Column::class))->toBeTrue();
+    expect(class_exists(MakeKanbanBoardCommand::class))->toBeTrue();
+});
+
+test('registers the board stylesheet as a filament asset loaded on request', function () {
+    $styles = collect(FilamentAsset::getStyles(['relaticle/flowforge']));
+
+    expect($styles->map(fn (Css $asset): string => $asset->getId())->all())->toBe(['flowforge-modern'])
+        ->and($styles->first()->isLoadedOnRequest())->toBeTrue();
+});
+
+test('every registered asset file exists on disk', function () {
+    $assets = [
+        ...FilamentAsset::getAlpineComponents(['relaticle/flowforge']),
+        ...FilamentAsset::getStyles(['relaticle/flowforge']),
+    ];
+
+    expect($assets)->toHaveCount(3);
+
+    foreach ($assets as $asset) {
+        expect(file_exists($asset->getPath()))->toBeTrue();
+    }
+});

@@ -38,7 +38,10 @@ class CardTag extends TextEntry
             return '';
         }
 
-        return view('flowforge::components.card-tag', ['tags' => $tags])->render();
+        /** @var view-string $view */
+        $view = 'flowforge::components.card-tag';
+
+        return view($view, ['tags' => $tags])->render();
     }
 
     /**

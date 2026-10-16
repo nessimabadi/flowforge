@@ -81,7 +81,10 @@ class CardAvatar extends Entry implements HasEmbeddedView
             return '';
         }
 
-        return view('flowforge::components.card-avatar', [
+        /** @var view-string $view */
+        $view = 'flowforge::components.card-avatar';
+
+        return view($view, [
             'visible' => array_slice($people, 0, $this->limit),
             'overflow' => max(0, count($people) - $this->limit),
             'names' => implode(', ', array_column($people, 'name')),
