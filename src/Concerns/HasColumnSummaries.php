@@ -26,7 +26,7 @@ trait HasColumnSummaries
             return null;
         }
 
-        $columnQuery = $this->getFilteredColumnQuery($column->getName());
+        $columnQuery = $this->getFilteredColumnQuery($column->getName())?->reorder();
 
         if ($columnQuery === null) {
             return null;

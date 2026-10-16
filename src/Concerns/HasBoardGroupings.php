@@ -153,6 +153,7 @@ trait HasBoardGroupings
 
         return $boardQuery !== null
             && $lane->applyQuery($boardQuery)
+                ->reorder()
                 ->whereIn($this->getColumnIdentifierAttribute(), $this->getColumnIdentifiers())
                 ->exists();
     }

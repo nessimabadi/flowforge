@@ -90,7 +90,7 @@ trait HasBoardRecords
             return 0;
         }
 
-        return (clone $query)->where($this->getColumnIdentifierAttribute(), $columnId)->count();
+        return (clone $query)->reorder()->where($this->getColumnIdentifierAttribute(), $columnId)->count();
     }
 
     public function getRecordColumnId(Model $record): string
@@ -138,7 +138,7 @@ trait HasBoardRecords
      */
     public function getBoardRecordCount(string $columnId): int
     {
-        return $this->getFilteredColumnQuery($columnId)?->count() ?? 0;
+        return $this->getFilteredColumnQuery($columnId)?->reorder()->count() ?? 0;
     }
 
     /**
@@ -155,6 +155,7 @@ trait HasBoardRecords
         $statusField = $this->getColumnIdentifierAttribute();
 
         return $queryClone
+            ->reorder()
             ->select(DB::raw("{$statusField} as column_value, COUNT(*) as total"))
             ->groupBy($statusField)
             ->pluck('total', 'column_value')

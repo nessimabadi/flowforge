@@ -215,7 +215,7 @@ trait InteractsWithBoard
             throw CardMoveRejectedException::unknownLane();
         }
 
-        if (! $from->applyQuery(clone $query)->whereKey($card->getKey())->exists()) {
+        if (! $from->applyQuery(clone $query)->reorder()->whereKey($card->getKey())->exists()) {
             throw CardMoveRejectedException::unknownLane();
         }
 
