@@ -9,10 +9,10 @@
 @endphp
 
 @if (count($groupings) > 0)
-    <div {{ $attributes->class(['flex items-center gap-2']) }}>
-        <label for="{{ $selectId }}" class="ff-muted text-sm">{{ __('flowforge::flowforge.group_by') }}</label>
+    <div {{ $attributes->class(['ff-grouping']) }}>
+        <label for="{{ $selectId }}" class="ff-grouping-label">{{ __('flowforge::flowforge.group_by') }}</label>
 
-        <x-filament::input.wrapper class="w-48">
+        <x-filament::input.wrapper class="ff-grouping-select">
             <x-filament::input.select
                 :id="$selectId"
                 x-on:change="$wire.$set('groupBy', $event.target.value || null)"

@@ -11,7 +11,7 @@ test('every visible column gets an add row', function () {
     $component = Livewire::test(TestBoard::class, ['withCreateAction' => true]);
     $html = $component->html();
 
-    expect(substr_count($html, 'ff-add-row'))->toBe(3)
+    expect(substr_count($html, 'class="ff-add-row"'))->toBe(3)
         ->and($html)->toContain('Add ' . e($component->instance()->getBoard()->getCardLabel()));
 });
 

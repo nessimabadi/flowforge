@@ -14,35 +14,17 @@
         $attributes
             ->merge($getExtraAttributes(), escape: false)
             ->class([
-                'flex',
-                'flex-row',
-                // Gap classes optimized for cards
-                'gap-1' => $gap === 'xs',
-                'gap-2' => $gap === 'sm',
-                'gap-3' => $gap === 'md',
-                'gap-4' => $gap === 'lg',
-                // Wrap settings
-                'flex-wrap' => $wrap,
-                'flex-nowrap' => !$wrap,
-                // Justify settings
-                'justify-start' => $justify === 'start',
-                'justify-center' => $justify === 'center',
-                'justify-end' => $justify === 'end',
-                'justify-between' => $justify === 'between',
-                'justify-around' => $justify === 'around',
-                'justify-evenly' => $justify === 'evenly',
-                // Align settings
-                'items-start' => $align === 'start',
-                'items-center' => $align === 'center',
-                'items-end' => $align === 'end',
-                'items-baseline' => $align === 'baseline',
-                'items-stretch' => $align === 'stretch',
+                'ff-card-flex',
+                "ff-card-flex--gap-{$gap}",
+                'ff-card-flex--nowrap' => ! $wrap,
+                "ff-card-flex--justify-{$justify}",
+                "ff-card-flex--align-{$align}",
             ])
     }}
 >
     @foreach ($getChildSchema()->getComponents() as $component)
         @if (($component instanceof Action) || ($component instanceof ActionGroup))
-            <div class="flex-shrink-0">
+            <div class="ff-card-flex-item--fixed">
                 {{ $component }}
             </div>
         @else
@@ -75,8 +57,8 @@
                     x-cloak
                 @endif
                 @class([
-                    'flex-shrink-0' => !($component instanceof Component && $component->canGrow()),
-                    'flex-grow' => ($component instanceof Component) && $component->canGrow(),
+                    'ff-card-flex-item--fixed' => ! ($component instanceof Component && $component->canGrow()),
+                    'ff-card-flex-item--grow' => ($component instanceof Component) && $component->canGrow(),
                 ])
             >
                 {{ $component }}

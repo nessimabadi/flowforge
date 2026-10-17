@@ -16,9 +16,8 @@
 
 <div
     @class([
-        'flowforge-card ff-card relative mb-2',
-        'cursor-grab active:cursor-grabbing' => $isDraggable,
-        'cursor-pointer' => ! $isDraggable && ($href || $mountAction),
+        'ff-card',
+        'ff-clickable' => ! $isDraggable && ($href || $mountAction),
     ])
     wire:key="card-{{ $laneId ?? 'board' }}-{{ $record['id'] }}"
     x-sortable-item="{{ $record['id'] }}"
@@ -27,19 +26,19 @@
     data-position="{{ $record['position'] ?? '' }}"
 >
     @if (count($recordActions) > 0)
-        <div class="ff-card-actions absolute right-2 top-2">
+        <div class="ff-card-actions">
             <x-filament-actions::group :actions="$recordActions" />
         </div>
     @endif
 
     <div
-        @class(['flowforge-card-content flex flex-col gap-2 p-3', 'cursor-pointer' => $mountAction])
+        @class(['ff-card-body', 'ff-clickable' => $mountAction])
         @if($mountAction) wire:click="mountAction('{{ $mountAction }}', [], @js(['recordKey' => $record['id']]))" @endif
     >
         @unless ($hasCardTitle)
-            <h4 class="pr-6 text-sm font-medium text-gray-950 dark:text-white">
+            <h4 class="ff-card-title">
                 @if ($href)
-                    <a {{ $href }} class="block">{{ $record['title'] }}</a>
+                    <a {{ $href }} class="ff-card-link">{{ $record['title'] }}</a>
                 @else
                     {{ $record['title'] }}
                 @endif
@@ -48,7 +47,7 @@
 
         @if (filled($record['schema']))
             @if ($href)
-                <a {{ $href }} class="block">{{ $record['schema'] }}</a>
+                <a {{ $href }} class="ff-card-link">{{ $record['schema'] }}</a>
             @else
                 {{ $record['schema'] }}
             @endif

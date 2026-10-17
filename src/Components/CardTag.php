@@ -17,6 +17,7 @@ class CardTag extends TextEntry
         parent::setUp();
 
         $this->hiddenLabel();
+        $this->grow(false);
     }
 
     public function isHidden(): bool

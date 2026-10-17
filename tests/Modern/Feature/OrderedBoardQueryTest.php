@@ -33,7 +33,7 @@ test('a grouped board whose query is ordered lists the lanes beyond the visible 
 
 test('a column limit and a summary work on an ordered board query', function (string $shape) {
     Livewire::test(TestQueryShapeBoard::class, ['shape' => $shape, 'todoLimit' => 1, 'withSummary' => true])
-        ->assertSeeHtml('ff-muted truncate text-sm">1 shown</span>')
+        ->assertSeeHtml('ff-summary">1 shown</span>')
         ->call('moveCard', (string) Task::where('title', 'Beta')->value('id'), 'todo')
         ->assertNotified(__('flowforge::flowforge.column_full', ['column' => 'To Do', 'limit' => 1]));
 })->with(['ordered', 'counted'])->group('pgsql');

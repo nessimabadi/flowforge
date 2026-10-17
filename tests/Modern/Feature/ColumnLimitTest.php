@@ -49,11 +49,11 @@ test('the limit counts cards that a search hides', function () {
 });
 
 test('a column at its limit is marked full', function () {
-    Livewire::test(TestBoard::class, ['todoLimit' => 2])->assertSeeHtml('ff-count--full');
+    expect(Livewire::test(TestBoard::class, ['todoLimit' => 2])->html())->toMatch('/data-column-root="todo"[^>]*\sdata-full[\s>]/');
 });
 
 test('a column below its limit is not marked full', function () {
-    Livewire::test(TestBoard::class, ['todoLimit' => 3])->assertDontSeeHtml('ff-count--full');
+    expect(Livewire::test(TestBoard::class, ['todoLimit' => 3])->html())->not->toMatch('/\sdata-full[\s>]/');
 });
 
 test('the column root exposes its limit for the drag script', function () {

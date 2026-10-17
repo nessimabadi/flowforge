@@ -57,10 +57,7 @@
         @if ($hasCollapsibleFilters || $hasFiltersBeforeContent || $hasFiltersAfterContent)
             x-data="{ areFiltersOpen: @js(! $hasCollapsibleFilters) }"
         @endif
-        @class([
-            'fi-ta-ctn mb-4 !overflow-visible !shadow-none !ring-0 !bg-transparent',
-            'flex' => $hasFiltersBeforeContent || $hasFiltersAfterContent,
-        ])
+        class="fi-ta-ctn ff-filters"
     >
         {{-- BeforeContent sidebar (left of board) --}}
         @if ($hasFiltersBeforeContent)
@@ -70,7 +67,7 @@
                 x-transition:leave-end="fi-opacity-0"
                 x-bind:class="{ 'fi-open': areFiltersOpen }"
                 @class([
-                    'fi-ta-filters-before-content-ctn rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10 mr-4',
+                    'fi-ta-filters-before-content-ctn ff-filters-panel ff-filters-panel--before',
                     'lg:fi-open' => ! $hasCollapsibleFilters,
                     (($filtersFormWidth ??= Width::ExtraSmall) instanceof Width) ? "fi-width-{$filtersFormWidth->value}" : (is_string($filtersFormWidth) ? $filtersFormWidth : null),
                 ])
@@ -85,7 +82,7 @@
         @endif
 
         {{-- Main content area --}}
-        <div class="fi-ta-main flex-1">
+        <div class="fi-ta-main ff-filters-main">
             {{-- Filters Above Content (AboveContent and AboveContentCollapsible) --}}
             @if ($hasFiltersAboveContent)
                 <div
@@ -94,7 +91,7 @@
                     @endif
                     @class([
                         'fi-ta-filters-above-content-ctn',
-                        '!border-b-0 rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10 mb-4',
+                        'ff-filters-panel ff-filters-panel--above',
                     ])
                 >
                     <x-filament-tables::filters
@@ -118,7 +115,7 @@
 
             {{-- Toolbar with search and dialog triggers (for Dropdown/Modal/Before/After layouts) --}}
             @if ($hasHeaderToolbar)
-                <div class="fi-ta-header-toolbar flex items-center gap-x-4 mb-4 px-0">
+                <div class="fi-ta-header-toolbar ff-filters-toolbar">
                     {{-- Filters trigger for sidebar layouts (BeforeContent/AfterContent) --}}
                     @if ($hasFiltersBeforeContent || $hasFiltersAfterContent)
                         <span
@@ -219,7 +216,7 @@
                 <div
                     @class([
                         'fi-ta-filters-below-content-ctn',
-                        'rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10 mt-4',
+                        'ff-filters-panel ff-filters-panel--below',
                     ])
                 >
                     <x-filament-tables::filters
@@ -236,7 +233,7 @@
                 @if (filled($filterIndicatorsView = FilamentView::renderHook(TablesRenderHook::FILTER_INDICATORS, scopes: static::class, data: ['filterIndicators' => $filterIndicators])))
                     {{ $filterIndicatorsView }}
                 @else
-                    <div class="fi-ta-filter-indicators mt-3 px-0">
+                    <div class="fi-ta-filter-indicators ff-filters-indicators">
                         <div>
                             <span class="fi-ta-filter-indicators-label">
                                 {{ __('filament-tables::table.filters.indicator') }}
@@ -297,7 +294,7 @@
                 x-transition:leave-end="fi-opacity-0"
                 x-bind:class="{ 'fi-open': areFiltersOpen }"
                 @class([
-                    'fi-ta-filters-after-content-ctn rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10 ml-4',
+                    'fi-ta-filters-after-content-ctn ff-filters-panel ff-filters-panel--after',
                     'lg:fi-open' => ! $hasCollapsibleFilters,
                     (($filtersFormWidth ??= Width::ExtraSmall) instanceof Width) ? "fi-width-{$filtersFormWidth->value}" : (is_string($filtersFormWidth) ? $filtersFormWidth : null),
                 ])
@@ -312,8 +309,8 @@
         @endif
     </div>
 @elseif ($isSearchable)
-    <div class="fi-ta-ctn mb-4 !overflow-visible !shadow-none !ring-0 !bg-transparent">
-        <div class="fi-ta-header-toolbar flex items-center gap-x-4">
+    <div class="fi-ta-ctn ff-filters">
+        <div class="fi-ta-header-toolbar">
             <x-filament-tables::search-field
                 :debounce="$table->getSearchDebounce()"
                 :on-blur="$table->isSearchOnBlur()"

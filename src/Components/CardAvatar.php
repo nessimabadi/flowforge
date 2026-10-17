@@ -25,6 +25,7 @@ class CardAvatar extends Entry implements HasEmbeddedView
         parent::setUp();
 
         $this->hiddenLabel();
+        $this->grow(false);
     }
 
     public function limit(int $limit): static

@@ -57,8 +57,8 @@ test('lanes label themselves and show their total', function () {
     $html = Livewire::test(TestGroupedBoard::class)->set('groupBy', 'priority')->html();
 
     expect($html)
-        ->toMatch('/>Low<\/h4>\s*<span class="ff-muted text-sm tabular-nums">2<\/span>/')
-        ->toMatch('/>High<\/h4>\s*<span class="ff-muted text-sm tabular-nums">1<\/span>/');
+        ->toMatch('/>Low<\/h4>\s*<span class="ff-lane-count">2<\/span>/')
+        ->toMatch('/>High<\/h4>\s*<span class="ff-lane-count">1<\/span>/');
 });
 
 test('the grouping is read from the url', function () {
@@ -175,13 +175,13 @@ test('the show more buttons are keyed', function () {
         ->assertSeeHtml('wire:key="more-lanes"');
 });
 
-test('the lane grid scrolls inside a bounded height with a board colored sticky header', function () {
+test('the lane grid scrolls inside its own container with a sticky header row', function () {
     viewTask('Low card', 'low', '65535.0000000000');
 
     Livewire::test(TestGroupedBoard::class)
         ->set('groupBy', 'priority')
-        ->assertSeeHtml('max-height: calc(100vh - 13rem)')
-        ->assertSeeHtml('background-color: var(--ff-board-bg)');
+        ->assertSeeHtml('class="ff-lanes"')
+        ->assertSeeHtml('class="ff-lanes-heads"');
 });
 
 test('a client cannot overflow or inflate lane paging', function () {
@@ -294,7 +294,7 @@ test('collapsing empty columns applies to the flat board only', function () {
     viewTask('Low card', 'low', '65535.0000000000');
 
     Livewire::test(TestGroupedBoard::class, ['collapseEmpty' => true])
-        ->assertSeeHtml('flowforge-column-collapsed')
+        ->assertSeeHtml('data-collapsed')
         ->set('groupBy', 'priority')
-        ->assertDontSeeHtml('flowforge-column-collapsed');
+        ->assertDontSeeHtml('data-collapsed');
 });

@@ -22,7 +22,7 @@ beforeEach(function () {
 function modernCardTitleHtml(string $html): string
 {
     return str($html)
-        ->after('flowforge-card-content')
+        ->after('ff-card-body')
         ->before('</h4>')
         ->toString();
 }
@@ -77,7 +77,7 @@ test('a hidden modal card action mounts nothing', function () {
 test('a modal card action marks its content as clickable', function () {
     $html = Livewire::test(TestCardActionModalBoard::class)->html();
 
-    expect($html)->toMatch('/class="[^"]*\bcursor-pointer\b[^"]*"\s+wire:click="mountAction\(\'edit\'/');
+    expect($html)->toMatch('/class="[^"]*\bff-clickable\b[^"]*"\s+wire:click="mountAction\(\'edit\'/');
 });
 
 test('card action inheriting a default action url renders as a link', function () {

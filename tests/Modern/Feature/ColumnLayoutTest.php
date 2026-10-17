@@ -40,7 +40,7 @@ test('a colored column shows a dot before its label', function () {
 test('the header sits above the tray, outside it', function () {
     $html = Livewire::test(TestBoard::class)->html();
 
-    expect(strpos($html, 'flowforge-column-header'))->toBeLessThan(strpos($html, 'flowforge-column-tray'));
+    expect(strpos($html, 'ff-column-header'))->toBeLessThan(strpos($html, 'ff-tray'));
 });
 
 test('each column root exposes its id and total for the drag script', function () {

@@ -28,31 +28,31 @@
     $isModalLayout = ($filtersLayout === FiltersLayout::Modal) || ($hasFiltersDialog && $filtersTriggerAction->isModalSlideOver());
 @endphp
 
-<div class="flex flex-col gap-y-1">
+<div class="ff-header">
     {{-- Breadcrumbs --}}
     @if (filled($breadcrumbs))
-        <x-filament::breadcrumbs :breadcrumbs="$breadcrumbs" class="mb-2" />
+        <x-filament::breadcrumbs :breadcrumbs="$breadcrumbs" class="ff-header-breadcrumbs" />
     @endif
 
     {{-- Title row: heading + filter + search + actions --}}
-    <div class="flex flex-wrap items-center gap-4">
-        <div class="flex-1 basis-auto min-w-0">
+    <div class="ff-header-row">
+        <div class="ff-header-title">
             {{ FilamentView::renderHook(PanelsRenderHook::PAGE_HEADER_HEADING_BEFORE, scopes: $this->getRenderHookScopes()) }}
 
-            <h1 class="fi-header-heading text-2xl font-bold tracking-tight text-gray-950 dark:text-white sm:text-3xl">
+            <h1 class="fi-header-heading">
                 {{ $heading }}
             </h1>
 
             {{ FilamentView::renderHook(PanelsRenderHook::PAGE_HEADER_HEADING_AFTER, scopes: $this->getRenderHookScopes()) }}
 
             @if (filled($subheading))
-                <p class="fi-header-subheading mt-1 max-w-2xl text-sm text-gray-600 dark:text-gray-400">
+                <p class="ff-header-subheading">
                     {{ $subheading }}
                 </p>
             @endif
         </div>
 
-        <div class="flex flex-wrap items-center gap-x-6 gap-y-3">
+        <div class="ff-header-tools">
             <x-flowforge::modern.grouping-picker />
 
             @if ($isFilterable && $hasFiltersDialog)
@@ -157,7 +157,7 @@
         @if (filled($filterIndicatorsView = FilamentView::renderHook(TablesRenderHook::FILTER_INDICATORS, scopes: static::class, data: ['filterIndicators' => $filterIndicators])))
             {{ $filterIndicatorsView }}
         @else
-            <div class="fi-ta-filter-indicators flex flex-wrap items-center gap-1 mt-1">
+            <div class="ff-header-indicators">
                 @foreach ($filterIndicators as $indicator)
                     <x-filament::badge :color="$indicator->getColor()">
                         {{ $indicator->getLabel() }}

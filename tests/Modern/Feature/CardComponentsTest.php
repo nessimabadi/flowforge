@@ -47,8 +47,8 @@ test('a card tag renders a colored dot and its formatted label', function () {
 
     Livewire::test(TestCardComponentsBoard::class)
         ->assertSeeHtml('--color-500:var(--danger-500)')
-        ->assertSeeHtml('background-color: var(--color-500);"></span>')
-        ->assertSeeHtml('ff-card-tag ff-muted');
+        ->assertSeeHtml('class="ff-card-tag-dot"')
+        ->assertSeeHtml('class="ff-card-tag"');
 });
 
 test('a card tag formats its label with formatStateUsing', function () {

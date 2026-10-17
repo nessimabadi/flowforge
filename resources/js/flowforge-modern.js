@@ -1,15 +1,29 @@
 const FLOWFORGE_TOKENS = [
-    '--ff-board-bg',
-    '--ff-tray-bg',
-    '--ff-card-bg',
-    '--ff-card-ring',
+    '--ff-surface',
+    '--ff-surface-sunken',
+    '--ff-surface-raised',
+    '--ff-border',
+    '--ff-text',
+    '--ff-text-muted',
     '--ff-accent',
     '--ff-accent-tint',
     '--ff-danger',
     '--ff-warning',
-    '--ff-muted',
+    '--ff-radius',
+    '--ff-gap',
     '--ff-ease',
     '--ff-duration',
+    '--ff-column-width',
+    '--ff-tray-bg',
+    '--ff-tray-radius',
+    '--ff-card-bg',
+    '--ff-card-ring',
+    '--ff-card-radius',
+    '--ff-card-shadow',
+    '--ff-card-padding',
+    '--ff-drag-tilt',
+    '--ff-drag-shadow',
+    '--ff-placeholder-border',
 ];
 
 const sortablesAwaitingDrag = new WeakSet();
@@ -24,6 +38,7 @@ export default function flowforgeModern({ state }) {
         dragOverColumn: null,
         dragOverLane: null,
         dragSource: null,
+        placeholder: null,
         stopTrackingPointer: null,
 
         init() {
@@ -58,8 +73,8 @@ export default function flowforgeModern({ state }) {
                 dataIdAttr: 'x-sortable-item',
                 forceFallback: true,
                 fallbackOnBody: true,
-                fallbackClass: 'ff-card-dragging',
-                ghostClass: 'ff-card-placeholder',
+                fallbackClass: '',
+                ghostClass: '',
                 delay: 150,
                 delayOnTouchOnly: true,
                 animation: reduceMotion ? 0 : 200,
@@ -118,7 +133,10 @@ export default function flowforgeModern({ state }) {
 
         startDrag(event) {
             this.stopTrackingPointer?.();
-            this.copyTokensToGhost();
+            this.markGhost();
+
+            this.placeholder = event.item;
+            this.placeholder.setAttribute('data-placeholder', '');
 
             // WebKit turns a fallback-mode drag into a text selection across the board.
             window.getSelection()?.removeAllRanges();
@@ -147,7 +165,7 @@ export default function flowforgeModern({ state }) {
                 return;
             }
 
-            this.copyTokensToGhost();
+            this.markGhost();
 
             const point = pointerEvent.touches?.[0] ?? pointerEvent;
             const target = document.elementFromPoint(point.clientX, point.clientY);
@@ -158,30 +176,54 @@ export default function flowforgeModern({ state }) {
             this.dragOverLane = cell?.dataset.laneId ?? null;
         },
 
-        copyTokensToGhost() {
+        markGhost() {
             const ghost = window.Sortable.ghost;
 
-            if (!ghost || ghost.dataset.ffTokens) {
+            if (!ghost || ghost.hasAttribute('data-dragging')) {
                 return;
             }
 
-            // The fallback clone lives on document.body, outside .ff-board, so it inherits none of the --ff-* tokens.
+            ghost.removeAttribute('data-placeholder');
+            ghost.setAttribute('data-dragging', '');
+            ghost.style.opacity = '1';
+
+            // The fallback clone lives on document.body, outside .ff-board, so it inherits no token set on the board.
             const board = getComputedStyle(this.$root);
 
             for (const name of FLOWFORGE_TOKENS) {
-                ghost.style.setProperty(name, board.getPropertyValue(name));
-            }
+                const value = board.getPropertyValue(name);
 
-            ghost.dataset.ffTokens = 'true';
+                if (value !== '') {
+                    ghost.style.setProperty(name, value);
+                }
+            }
         },
 
         endDrag() {
             document.documentElement.classList.remove('ff-dragging');
+            this.placeholder?.removeAttribute('data-placeholder');
+            this.placeholder = null;
             this.stopTrackingPointer?.();
             this.stopTrackingPointer = null;
             this.dragOverColumn = null;
             this.dragOverLane = null;
             this.dragSource = null;
+        },
+
+        columnDrop(columnId) {
+            if (this.dragOverColumn !== columnId) {
+                return null;
+            }
+
+            return this.isColumnBlocked(columnId) ? 'blocked' : 'active';
+        },
+
+        cellDrop(columnId, laneId) {
+            if (this.dragOverColumn !== columnId || this.dragOverLane !== laneId) {
+                return null;
+            }
+
+            return this.isCellBlocked(columnId, laneId) ? 'blocked' : 'active';
         },
 
         canDrop(toEl, fromEl) {
@@ -315,9 +357,8 @@ export default function flowforgeModern({ state }) {
             from.insertBefore(item, anchor);
         },
 
-        setCardState(cardElement, disabled) {
-            cardElement.style.opacity = disabled ? '0.7' : '';
-            cardElement.style.pointerEvents = disabled ? 'none' : '';
+        setCardState(cardElement, pending) {
+            cardElement.toggleAttribute('data-pending', pending);
         },
 
         isLoadingColumn(columnId) {

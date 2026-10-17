@@ -3,6 +3,6 @@
     $title = data_get($getRecord(), $board->getRecordTitleAttribute());
 @endphp
 
-<h4 {{ $attributes->merge($getExtraAttributes(), escape: false)->class(['pr-6 text-sm font-medium text-gray-950 dark:text-white']) }}>
+<h4 {{ $attributes->merge($getExtraAttributes(), escape: false)->class(['ff-card-title']) }}>
     {{ $title }}
 </h4>

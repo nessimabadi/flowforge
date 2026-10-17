@@ -5,7 +5,7 @@
 <span hidden x-load-css="[@js(FilamentAsset::getStyleHref('flowforge-modern', package: 'relaticle/flowforge'))]"></span>
 
 <div
-    class="ff-board w-full h-full flex flex-col relative"
+    class="ff-board"
     data-lanes-writable="{{ $config['lanesWritable'] ? 'true' : 'false' }}"
     x-load
     x-load-src="{{ FilamentAsset::getAlpineComponentSrc('flowforge-modern', package: 'relaticle/flowforge') }}"
@@ -25,15 +25,14 @@
     @endunless
 
     @unless ($config['headerToolbar'] ?? false)
-        <x-flowforge::modern.grouping-picker :groupings="$groupings" class="pb-3" />
+        <x-flowforge::modern.grouping-picker :groupings="$groupings" />
     @endunless
 
-    <!-- Board Content -->
-    <div class="flex-1 overflow-hidden h-full">
+    <div class="ff-board-body">
         @if ($config['grouping'] !== null)
             <x-flowforge::modern.lanes :columns="$columns" :lanes="$lanes" :config="$config" :hasMoreLanes="$hasMoreLanes" />
         @else
-            <div class="flex flex-row h-full overflow-x-auto overflow-y-hidden gap-x-5">
+            <div class="ff-columns">
                 @foreach($columns as $columnId => $column)
                     <x-flowforge::modern.column
                         :columnId="$columnId"

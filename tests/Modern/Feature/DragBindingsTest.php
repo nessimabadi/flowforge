@@ -23,8 +23,7 @@ class DragBindingsNumericBoard extends TestBoard
 
 test('a column root binds its hover and blocked states', function () {
     Livewire::test(TestBoard::class)
-        ->assertSeeHtml('ff-column--active')
-        ->assertSeeHtml("isColumnBlocked('todo')");
+        ->assertSeeHtml('x-bind:data-drop="columnDrop(\'todo\')"');
 });
 
 test('the header count re-renders while a card hovers', function () {
@@ -50,14 +49,15 @@ test('lane cells bind their own hover state', function () {
 
     Livewire::test(TestGroupedBoard::class)
         ->set('groupBy', 'priority')
-        ->assertSeeHtml("isCellBlocked('todo', 'low')");
+        ->assertSeeHtml("x-bind:data-drop=\"cellDrop('todo', 'low')\"");
 });
 
 test('collapsed rails keep their drag-expand binding', function () {
     Task::create(['title' => 'Only', 'status' => 'todo', 'order_position' => '65535.0000000000']);
 
-    Livewire::test(TestBoard::class, ['collapseEmpty' => true])
-        ->assertSeeHtml("'w-[300px] min-w-[300px]': dragOverColumn ===");
+    $html = Livewire::test(TestBoard::class, ['collapseEmpty' => true])->html();
+
+    expect($html)->toMatch('/<div\s[^>]*data-collapsed[^>]*x-bind:data-drop="columnDrop\(\'in_progress\'\)"/');
 });
 
 test('numeric column ids are emitted as strings', function () {
@@ -66,10 +66,9 @@ test('numeric column ids are emitted as strings', function () {
     $html = Livewire::test(DragBindingsNumericBoard::class, ['collapseEmpty' => true])->html();
 
     expect($html)
-        ->toContain("isColumnBlocked('2')")
+        ->toContain("columnDrop('2')")
         ->toContain("displayCount('2'")
-        ->toContain('dragOverColumn === &quot;2&quot;')
-        ->not->toContain('dragOverColumn === 2');
+        ->not->toContain('columnDrop(2)');
 });
 
 test('the add row on a numeric column carries the column as a string', function () {
