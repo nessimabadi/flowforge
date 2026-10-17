@@ -11,7 +11,7 @@
 ## Upgrade steps
 
 1. `composer update relaticle/flowforge`
-2. `php artisan filament:assets`, which publishes the Modern script.
+2. `php artisan filament:assets`, which publishes the Modern script and the Modern stylesheet. The page head links the stylesheet, so a missing publish leaves Modern boards unstyled.
 
 Nothing else changes for a board that keeps its current `BoardPage`, `BoardResourcePage` or `InteractsWithBoard` import.
 
@@ -27,8 +27,8 @@ use Relaticle\Flowforge\Modern\BoardResourcePage;
 
 ## What changes on a Modern board
 
-- Overrides of `moveCard()` move to hooks. `moveCard()` returns `bool` and takes `?string $fromLaneId` and `?string $toLaneId`, so an override with the classic `void` signature is a fatal error. Put checks in `authorizeCardMove()` and custom writes in `persistCardMove()`. See [Custom Card Movement Logic](https://relaticle.github.io/flowforge/essentials/integration-patterns#custom-card-movement-logic).
-- `calculateAndUpdatePosition()` and `calculateAndUpdatePositionWithRetry()` take a trailing `?array $laneMove = null`. An override with the classic signature is a fatal error. Prefer the two hooks.
+- Overrides of `moveCard()` move to hooks. `moveCard()` returns `bool` and takes `?string $fromLaneId` and `?string $toLaneId`, so on a subclass of `Modern\BoardPage` or `Modern\BoardResourcePage` an override with the classic `void` signature is a fatal error. A standalone class that uses the Modern trait and declares its own `moveCard(): void` gets no error, and the override silently replaces the Modern method, so refused moves never revert the card. Remove the override. Put checks in `authorizeCardMove()` and custom writes in `persistCardMove()`. See [Custom Card Movement Logic](https://relaticle.github.io/flowforge/essentials/integration-patterns#custom-card-movement-logic).
+- `calculateAndUpdatePosition()` and `calculateAndUpdatePositionWithRetry()` take a trailing `?array $laneMove = null`. An override with the classic signature is a fatal error on a Modern page subclass. A standalone class that uses the Modern trait gets no error, and its method silently replaces the Modern one. Prefer the two hooks.
 - A move to a column the board does not show, or to a card its query no longer returns, is refused with a notification and the card returns.
 - `createCardAction()`, column limits, column summaries, groupings and the card components (`CardTitle`, `CardTag`, `CardMeta`, `CardAvatar`) work on Modern boards only. A classic board ignores them.
 - Modern markup carries `ff-*` classes. CSS written for `flowforge-*` classes does not reach a Modern board. Restyle through the [design system](https://relaticle.github.io/flowforge/essentials/design-system).
@@ -44,7 +44,7 @@ use Relaticle\Flowforge\Modern\BoardResourcePage;
 
 ## Known limitation
 
-The first `wire:navigate` visit from a classic page to a Modern board can show the board unstyled for a moment, because Livewire does not wait for new head stylesheets. Full page loads and repeat visits are styled from the first frame.
+The first `wire:navigate` visit to a Modern board from any page that has not loaded the Modern stylesheet can show the board unstyled for a moment, because Livewire does not wait for new head stylesheets. Full page loads and repeat visits are styled from the first frame.
 
 ---
 

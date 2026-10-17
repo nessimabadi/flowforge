@@ -328,7 +328,7 @@ use Relaticle\Flowforge\Components\{CardAvatar, CardFlex, CardMeta, CardTag, Car
 ]))
 ```
 
-These components are styled on Modern boards only.
+These components are designed for Modern boards. On a classic board their look is not guaranteed.
 
 ### Column Limits
 
@@ -454,7 +454,7 @@ protected function persistCardMove(Model $card, mixed $columnValue, string $posi
 }
 ```
 
-`persistCardMove()` runs inside the move's database transaction. Throw `CardMoveRejectedException::because()` from either hook to refuse with a toast and revert the card. An `abort(403)` reverts the card but shows Livewire's error UI. Modern `moveCard()` returns `bool` and takes `?string $fromLaneId` and `?string $toLaneId`.
+`persistCardMove()` runs inside the move's database transaction. Throw `CardMoveRejectedException::because()` from either hook to refuse with a toast and revert the card. An `abort(403)` reverts the card but shows Livewire's error UI. Modern `moveCard()` returns `bool` and takes `?string $fromLaneId` and `?string $toLaneId`. A classic `void` override is a fatal error on a Modern page subclass. A class that uses the Modern trait directly gets no error and the override silently replaces the Modern method, so remove it and use the two hooks.
 
 ## Artisan Commands
 
@@ -578,7 +578,7 @@ public function board(Board $board): Board
 
 ### Joined Board Queries
 
-Select the base table's columns explicitly, `->select('tasks.*', 'joined.column')`. With `select *`, a joined `id` overwrites the card's key.
+Select the base table's columns explicitly, `->select('tasks.*', 'joined.column')`. With `select *`, a joined `id` overwrites the card's key. The joined table must not share a column name with the board's column or position attribute, because Flowforge filters on the unqualified name and PostgreSQL reports it as ambiguous.
 
 ### Eager Loading for Cards
 
