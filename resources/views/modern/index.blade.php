@@ -1,6 +1,7 @@
 @php use Filament\Support\Facades\FilamentAsset; @endphp
 @props(['columns', 'config', 'lanes' => [], 'hasMoreLanes' => false, 'groupings' => []])
 
+<div style="display: contents">
 <span hidden x-load-css="[@js(FilamentAsset::getStyleHref('flowforge-modern', package: 'relaticle/flowforge'))]"></span>
 
 <div
@@ -46,4 +47,5 @@
     </div>
 
     <x-filament-actions::modals/>
+</div>
 </div>

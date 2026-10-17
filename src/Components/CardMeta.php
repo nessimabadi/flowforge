@@ -6,8 +6,6 @@ namespace Relaticle\Flowforge\Components;
 
 class CardMeta extends CardFlex
 {
-    protected string $view = 'flowforge::modern.components.card-flex';
-
     protected string $gap = 'sm';
 
     protected function setUp(): void

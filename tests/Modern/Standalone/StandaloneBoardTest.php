@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Livewire\Livewire;
 use Relaticle\Flowforge\Services\DecimalPosition;
 use Relaticle\Flowforge\Tests\Fixtures\Modern\Task;
+use Relaticle\Flowforge\Tests\Fixtures\Modern\TestBareStandaloneBoard;
 use Relaticle\Flowforge\Tests\Fixtures\Modern\TestStandaloneBoard;
 
 describe('standalone board rendering', function () {
@@ -35,6 +36,16 @@ describe('standalone board rendering', function () {
             ->assertSee('Standalone In Progress')
             ->assertSee('Standalone Completed');
     });
+});
+
+test('a bare board view renders as a single root with debug on', function () {
+    config()->set('app.debug', true);
+
+    Task::factory()->todo()->create(['title' => 'Bare todo']);
+
+    Livewire::test(TestBareStandaloneBoard::class)
+        ->assertStatus(200)
+        ->assertSee('Bare todo');
 });
 
 describe('standalone card movement', function () {

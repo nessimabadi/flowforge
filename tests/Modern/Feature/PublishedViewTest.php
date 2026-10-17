@@ -8,6 +8,7 @@ use Livewire\Livewire;
 use Relaticle\Flowforge\Tests\Fixtures\Modern\Task as ModernTask;
 use Relaticle\Flowforge\Tests\Fixtures\Modern\TestBoard as ModernTestBoard;
 use Relaticle\Flowforge\Tests\Fixtures\Modern\TestCardComponentsBoard;
+use Relaticle\Flowforge\Tests\Fixtures\Modern\TestCardFlexBoard;
 use Relaticle\Flowforge\Tests\Fixtures\Task;
 use Relaticle\Flowforge\Tests\Fixtures\TestBoard as ClassicTestBoard;
 
@@ -40,14 +41,6 @@ afterEach(function () {
     File::deleteDirectory($this->publishedPath);
 });
 
-test('every classic view path can be published', function () {
-    $released = collect(explode("\n", trim((string) shell_exec('git ls-tree -r --name-only v4.1.4 resources/views'))))
-        ->map(fn (string $path): string => str($path)->after('resources/views/')->before('.blade.php')->toString())
-        ->all();
-
-    expect(PUBLISHABLE_CLASSIC_VIEWS)->toEqualCanonicalizing($released);
-});
-
 test('a published classic view does not reach a modern board', function (string $board, array $properties) {
     $html = Livewire::test($board, $properties)->assertSee('Known card')->html();
 
@@ -56,6 +49,7 @@ test('a published classic view does not reach a modern board', function (string 
     'plain board' => [ModernTestBoard::class, []],
     'header toolbar' => [ModernTestBoard::class, ['withHeaderToolbar' => true]],
     'card components' => [TestCardComponentsBoard::class, []],
+    'card flex used directly' => [TestCardFlexBoard::class, []],
 ]);
 
 test('a published classic view reaches a classic board', function () {

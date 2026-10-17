@@ -9,6 +9,7 @@ use Filament\Actions\Contracts\HasActions;
 use Filament\Actions\Exceptions\ActionNotResolvableException;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Resources\Pages\Page;
+use Filament\Tables\Contracts\HasTable;
 use Livewire\Attributes\Url;
 use Relaticle\Flowforge\Contracts\HasBoard;
 use Relaticle\Flowforge\Modern\Concerns\BaseBoard;
@@ -89,7 +90,7 @@ abstract class BoardResourcePage extends Page implements HasActions, HasBoard, H
 
             if (filled($action['context']['schemaComponent'] ?? null)) {
                 $resolvedAction = $this->resolveSchemaComponentAction($action, $resolvedActions);
-            } elseif (filled($action['context']['table'] ?? null)) {
+            } elseif ($this instanceof HasTable && filled($action['context']['table'] ?? null)) {
                 $resolvedAction = $this->resolveTableAction($action, $resolvedActions);
             } elseif (filled($recordKey) && blank($columnId)) {
                 $resolvedAction = $this->resolveBoardAction($action, $resolvedActions);
