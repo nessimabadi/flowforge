@@ -110,15 +110,12 @@ describe('board rendering', function () {
     });
 
     test('shows empty state for empty columns', function () {
-        // Create task only in one column
         Task::factory()->todo()->create(['title' => 'Only Task']);
 
         $component = Livewire::test(TestBoard::class);
 
-        // Should see the task in todo
         $component->assertSee('Only Task');
 
-        // Board should still render all columns
         $component->assertSee('To Do')
             ->assertSee('In Progress')
             ->assertSee('Completed');
@@ -205,7 +202,6 @@ describe('card movement', function () {
             ->call('moveCard', (string) $task->id, 'completed', null, null)
             ->assertDispatched('kanban-card-moved');
 
-        // Verify the move actually happened
         expect($task->fresh()->status)->toBe('completed');
     });
 
@@ -226,7 +222,6 @@ describe('move to empty column', function () {
     test('handles card moved to empty column', function () {
         $task = Task::factory()->todo()->withPosition('65535.0000000000')->create();
 
-        // Move to completed column which is empty
         Livewire::test(TestBoard::class)
             ->call('moveCard', (string) $task->id, 'completed', null, null)
             ->assertDispatched('kanban-card-moved');
@@ -248,17 +243,14 @@ describe('move to empty column', function () {
 
 describe('concurrent card movement', function () {
     test('handles very close positions by inserting between', function () {
-        // Create two tasks with very close positions (but different due to unique constraint)
         $task1 = Task::factory()->inProgress()->withPosition('65535.0000000000')->create();
         $task2 = Task::factory()->inProgress()->withPosition('65536.0000000000')->create();
         $taskToMove = Task::factory()->todo()->withPosition('10000.0000000000')->create();
 
-        // Move between two cards with close positions - should work
         Livewire::test(TestBoard::class)
             ->call('moveCard', (string) $taskToMove->id, 'in_progress', (string) $task1->id, (string) $task2->id)
             ->assertDispatched('kanban-card-moved');
 
-        // Task should be moved and positioned between the two
         $movedTask = $taskToMove->fresh();
         expect($movedTask->status)->toBe('in_progress')
             ->and((float) $movedTask->order_position)->toBeGreaterThan(65535)
@@ -266,7 +258,6 @@ describe('concurrent card movement', function () {
     });
 
     test('triggers auto-rebalancing when gap too small', function () {
-        // Create cards with very small gap (below MIN_GAP threshold)
         $task1 = Task::factory()->inProgress()->withPosition('1000.0000000001')->create();
         $task2 = Task::factory()->inProgress()->withPosition('1000.0000000002')->create();
         $taskToMove = Task::factory()->todo()->withPosition('65535.0000000000')->create();
@@ -274,29 +265,25 @@ describe('concurrent card movement', function () {
         Livewire::test(TestBoard::class)
             ->call('moveCard', (string) $taskToMove->id, 'in_progress', (string) $task1->id, (string) $task2->id);
 
-        // After rebalancing, positions should be evenly distributed with large gaps
         $positions = Task::where('status', 'in_progress')
             ->orderBy('order_position')
             ->pluck('order_position')
             ->map(fn ($p) => (float) $p)
             ->values();
 
-        // Check that gaps are now reasonable (after rebalancing)
         if ($positions->count() >= 2) {
             $gap = $positions[1] - $positions[0];
-            expect($gap)->toBeGreaterThan(1000); // Rebalanced with large gaps
+            expect($gap)->toBeGreaterThan(1000);
         }
     });
 });
 
 describe('pagination', function () {
     test('loads more items on demand', function () {
-        // Create many tasks in one column
         Task::factory(30)->todo()->create();
 
         $component = Livewire::test(TestBoard::class);
 
-        // Call loadMoreItems
         $component->call('loadMoreItems', 'todo', 20)
             ->assertDispatched('kanban-items-loaded');
     });
@@ -318,12 +305,10 @@ describe('pagination', function () {
     });
 
     test('tracks fully loaded state for small columns', function () {
-        // Create only 5 tasks - should be fully loaded by default
         Task::factory(5)->todo()->create();
 
         $component = Livewire::test(TestBoard::class);
 
-        // With only 5 tasks and default limit of 20, column should be fully loaded
         expect($component->instance()->isColumnFullyLoaded('todo'))->toBeTrue();
     });
 });
@@ -334,7 +319,6 @@ describe('edge cases', function () {
 
         $component = Livewire::test(TestBoard::class);
 
-        // Move card multiple times
         $component->call('moveCard', (string) $task->id, 'in_progress', null, null);
         expect($task->fresh()->status)->toBe('in_progress');
 
@@ -346,23 +330,20 @@ describe('edge cases', function () {
     });
 
     test('maintains correct order after multiple moves', function () {
-        // Create 3 tasks in order
         $task1 = Task::factory()->todo()->withPosition('65535.0000000000')->create(['title' => 'First']);
         $task2 = Task::factory()->todo()->withPosition('131070.0000000000')->create(['title' => 'Second']);
         $task3 = Task::factory()->todo()->withPosition('196605.0000000000')->create(['title' => 'Third']);
 
         $component = Livewire::test(TestBoard::class);
 
-        // Move task3 to top (before task1)
         $component->call('moveCard', (string) $task3->id, 'todo', null, (string) $task1->id);
 
-        // Verify order
         $orderedTasks = Task::where('status', 'todo')
             ->orderBy('order_position')
             ->pluck('title')
             ->toArray();
 
-        expect($orderedTasks[0])->toBe('Third'); // Now first
+        expect($orderedTasks[0])->toBe('Third');
     });
 
     test('handles moving last card from column', function () {
@@ -371,7 +352,6 @@ describe('edge cases', function () {
         Livewire::test(TestBoard::class)
             ->call('moveCard', (string) $task->id, 'completed', null, null);
 
-        // Todo column should now be empty
         expect(Task::where('status', 'todo')->count())->toBe(0);
         expect(Task::where('status', 'completed')->count())->toBe(1);
     });

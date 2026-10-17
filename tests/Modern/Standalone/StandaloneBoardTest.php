@@ -7,9 +7,6 @@ use Relaticle\Flowforge\Services\DecimalPosition;
 use Relaticle\Flowforge\Tests\Fixtures\Modern\Task;
 use Relaticle\Flowforge\Tests\Fixtures\Modern\TestStandaloneBoard;
 
-/**
- * @see https://github.com/relaticle/flowforge/issues/84
- */
 describe('standalone board rendering', function () {
     test('renders board with all columns', function () {
         Livewire::test(TestStandaloneBoard::class)

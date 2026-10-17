@@ -14,9 +14,6 @@ use Relaticle\Flowforge\Column;
 use Relaticle\Flowforge\Contracts\HasBoard;
 use Relaticle\Flowforge\Modern\Concerns\InteractsWithBoard;
 
-/**
- * Standalone Livewire component for testing without Filament Panel.
- */
 class TestStandaloneBoard extends Component implements HasActions, HasBoard, HasForms
 {
     use InteractsWithActions;

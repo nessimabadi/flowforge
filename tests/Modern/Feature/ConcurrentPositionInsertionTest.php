@@ -7,7 +7,6 @@ use Relaticle\Flowforge\Services\DecimalPosition;
 use Relaticle\Flowforge\Tests\Fixtures\Modern\Task;
 
 beforeEach(function () {
-    // Create reference cards that we'll insert between
     Task::create([
         'title' => 'Reference Card A',
         'status' => 'todo',
@@ -28,7 +27,6 @@ describe('concurrent position insertions', function () {
         $insertedPositions = [];
         $failedInserts = 0;
 
-        // Simulate 50 concurrent insertions using the jitter mechanism
         for ($i = 0; $i < 50; $i++) {
             $position = DecimalPosition::between($afterPos, $beforePos);
 
@@ -40,31 +38,26 @@ describe('concurrent position insertions', function () {
                 ]);
                 $insertedPositions[] = $task->order_position;
             } catch (QueryException $e) {
-                // If we hit a duplicate (extremely rare), count it
                 $failedInserts++;
             }
         }
 
-        // All positions should be unique
         expect(array_unique($insertedPositions))->toHaveCount(count($insertedPositions))
             ->and($failedInserts)->toBe(0);
 
-        // All positions should be strictly between bounds
         foreach ($insertedPositions as $position) {
             $posStr = DecimalPosition::normalize($position);
             expect(bccomp($posStr, $afterPos, 10))->toBeGreaterThan(0)
                 ->and(bccomp($posStr, $beforePos, 10))->toBeLessThan(0);
         }
 
-        // ORDER BY should give consistent results
         $orderedTasks = Task::where('status', 'todo')
-            ->whereNotIn('id', [1, 2]) // Exclude reference cards
+            ->whereNotIn('id', [1, 2])
             ->orderBy('order_position')
             ->get();
 
         expect($orderedTasks)->toHaveCount(50);
 
-        // Verify ordering is consistent
         $previousPosition = '0';
         foreach ($orderedTasks as $task) {
             $posStr = DecimalPosition::normalize($task->order_position);
@@ -79,7 +72,6 @@ describe('concurrent position insertions', function () {
         $beforePos = '2000.0000000000';
         $insertedCount = 0;
 
-        // Rapid fire 50 insertions without any delay
         for ($i = 0; $i < 50; $i++) {
             $position = DecimalPosition::between($afterPos, $beforePos);
 
@@ -91,13 +83,11 @@ describe('concurrent position insertions', function () {
                 ]);
                 $insertedCount++;
             } catch (QueryException) {
-                // Unique constraint violation - should never happen
             }
         }
 
         expect($insertedCount)->toBe(50);
 
-        // Verify all positions are unique
         $positions = Task::where('status', 'todo')
             ->whereNotIn('id', [1, 2])
             ->pluck('order_position')
@@ -107,14 +97,12 @@ describe('concurrent position insertions', function () {
     });
 
     test('unique constraint actually prevents duplicate positions', function () {
-        // Insert a card with a specific position
         Task::create([
             'title' => 'First Card',
             'status' => 'todo',
             'order_position' => '1500.0000000000',
         ]);
 
-        // Try to insert another card with the exact same position
         expect(fn () => Task::create([
             'title' => 'Duplicate Card',
             'status' => 'todo',
@@ -126,7 +114,6 @@ describe('concurrent position insertions', function () {
         $afterPos = '1000.0000000000';
         $beforePos = '2000.0000000000';
 
-        // Insert 100 cards
         for ($i = 0; $i < 100; $i++) {
             $position = DecimalPosition::between($afterPos, $beforePos);
             Task::create([
@@ -136,14 +123,12 @@ describe('concurrent position insertions', function () {
             ]);
         }
 
-        // Verify ORDER BY works correctly
         $tasks = Task::where('status', 'todo')
             ->orderBy('order_position')
             ->get();
 
-        expect($tasks)->toHaveCount(102); // 100 + 2 reference cards
+        expect($tasks)->toHaveCount(102);
 
-        // Verify strict ordering
         $previousPosition = '-999999';
         foreach ($tasks as $task) {
             $posStr = DecimalPosition::normalize($task->order_position);
@@ -160,17 +145,14 @@ describe('position collision statistics', function () {
         $beforePos = '2000.0000000000';
         $positions = [];
 
-        // Generate 1000 positions without inserting
         for ($i = 0; $i < 1000; $i++) {
             $positions[] = DecimalPosition::between($afterPos, $beforePos);
         }
 
         $uniquePositions = array_unique($positions);
 
-        // With cryptographic jitter, we should have 100% unique positions
         expect(count($uniquePositions))->toBe(1000);
 
-        // Calculate position distribution around midpoint
         $midpoint = DecimalPosition::betweenExact($afterPos, $beforePos);
         $belowMidpoint = 0;
         $aboveMidpoint = 0;
@@ -183,7 +165,6 @@ describe('position collision statistics', function () {
             }
         }
 
-        // Distribution should be roughly 50/50 (within reasonable variance)
         expect($belowMidpoint)->toBeGreaterThan(400)
             ->and($belowMidpoint)->toBeLessThan(600)
             ->and($aboveMidpoint)->toBeGreaterThan(400)

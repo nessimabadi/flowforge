@@ -6,15 +6,6 @@ use Livewire\Livewire;
 use Relaticle\Flowforge\Tests\Fixtures\Modern\Task;
 use Relaticle\Flowforge\Tests\Fixtures\Modern\TestBoardResourcePage;
 
-/**
- * A schema component action nested inside a mounted card action (for example a
- * Repeater's add/delete button) inherits the card's record, so Filament gives it a
- * context carrying BOTH `recordKey` and `schemaComponent`. Routing on `recordKey`
- * first sends it to the board resolver, which cannot find it, silently dropping the
- * mounted entry: the modal closes and the board never recovers.
- *
- * @see https://github.com/relaticle/flowforge/issues/156
- */
 test('repeater add action inside a card action keeps the card action mounted', function () {
     $task = Task::factory()->create(['status' => 'todo']);
 
@@ -70,11 +61,6 @@ test('card actions stay mountable after a nested schema component action runs', 
         ->and($component->get('mountedActions.0.name'))->toBe('editTask');
 });
 
-/**
- * A modal action registered on a card action has a parent action, so Filament's
- * getContext() returns early with only `recordKey`. It must keep resolving through
- * resolveBoardAction() and its getModalAction() lookup.
- */
 test('modal actions registered on a card action still resolve through the board resolver', function () {
     $task = Task::factory()->create(['status' => 'todo']);
 

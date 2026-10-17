@@ -51,7 +51,6 @@ test('blade component namespace is registered', function () {
 });
 
 test('package views are registered', function () {
-    // Test that views can be resolved
     expect(view()->exists('flowforge::index'))->toBeTrue();
     expect(view()->exists('flowforge::filament.pages.board-page'))->toBeTrue();
     expect(view()->exists('flowforge::livewire.column'))->toBeTrue();
@@ -69,7 +68,6 @@ test('package translations are available', function () {
 test('package script data is configured', function () {
     $serviceProvider = new FlowforgeServiceProvider(app());
 
-    // Use reflection to test protected getScriptData method
     $reflection = new ReflectionClass($serviceProvider);
     $method = $reflection->getMethod('getScriptData');
     $method->setAccessible(true);
@@ -81,11 +79,9 @@ test('package script data is configured', function () {
 });
 
 test('package configuration exists if defined', function () {
-    // Test that config is loaded if the file exists
     if (file_exists(__DIR__ . '/../../../config/flowforge.php')) {
         expect(config('flowforge'))->toBeArray();
     } else {
-        // If no config file, that's valid too
         expect(true)->toBeTrue();
     }
 });

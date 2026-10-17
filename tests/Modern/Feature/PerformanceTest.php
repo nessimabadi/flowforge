@@ -16,7 +16,7 @@ describe('DecimalPosition performance', function () {
 
         $elapsed = microtime(true) - $start;
 
-        expect($elapsed)->toBeLessThan(0.5); // Allow some margin
+        expect($elapsed)->toBeLessThan(0.5);
     });
 
     test('10,000 exact midpoint calculations complete in < 50ms', function () {
@@ -28,7 +28,7 @@ describe('DecimalPosition performance', function () {
 
         $elapsed = microtime(true) - $start;
 
-        expect($elapsed)->toBeLessThan(0.25); // CI runners have variable performance
+        expect($elapsed)->toBeLessThan(0.25);
     });
 
     test('10,000 normalize operations complete in < 50ms', function () {
@@ -41,13 +41,12 @@ describe('DecimalPosition performance', function () {
 
         $elapsed = microtime(true) - $start;
 
-        expect($elapsed)->toBeLessThan(0.25); // CI runners have variable performance
+        expect($elapsed)->toBeLessThan(0.25);
     });
 });
 
 describe('PositionRebalancer performance', function () {
     test('rebalancing 100 cards completes in < 2 seconds', function () {
-        // Create 100 cards with positions
         for ($i = 0; $i < 100; $i++) {
             Task::create([
                 'title' => "Card {$i}",
@@ -72,7 +71,6 @@ describe('PositionRebalancer performance', function () {
     });
 
     test('gap statistics on 100 cards completes in < 500ms', function () {
-        // Create 100 cards with positions
         for ($i = 0; $i < 100; $i++) {
             Task::create([
                 'title' => "Card {$i}",
@@ -106,7 +104,7 @@ describe('sequence generation performance', function () {
         $elapsed = microtime(true) - $start;
 
         expect($positions)->toHaveCount(1000)
-            ->and($elapsed)->toBeLessThan(0.5); // CI runners have variable performance
+            ->and($elapsed)->toBeLessThan(0.5);
     });
 
     test('generating 100 between positions completes in < 50ms', function () {
@@ -117,7 +115,7 @@ describe('sequence generation performance', function () {
         $elapsed = microtime(true) - $start;
 
         expect($positions)->toHaveCount(100)
-            ->and($elapsed)->toBeLessThan(0.25); // CI runners have variable performance
+            ->and($elapsed)->toBeLessThan(0.25);
     });
 });
 
@@ -143,6 +141,6 @@ describe('comparison performance', function () {
         $elapsed = microtime(true) - $start;
 
         expect($count)->toBe(10_000)
-            ->and($elapsed)->toBeLessThan(0.25); // CI runners have variable performance
+            ->and($elapsed)->toBeLessThan(0.25);
     });
 });

@@ -8,7 +8,6 @@ use Relaticle\Flowforge\Board;
 use Relaticle\Flowforge\Modern\Concerns\InteractsWithBoard;
 use Relaticle\Flowforge\Tests\Fixtures\Modern\Task;
 
-// Create a testable class that exposes protected methods
 class ModernRetryMechanismTestHelper
 {
     use InteractsWithBoard {
@@ -30,7 +29,6 @@ describe('isDuplicatePositionError detection', function () {
     test('detects SQLite UNIQUE constraint failure', function () {
         $helper = new ModernRetryMechanismTestHelper;
 
-        // SQLite constraint violation
         $exception = new QueryException(
             'sqlite',
             'INSERT INTO tasks ...',
@@ -38,7 +36,6 @@ describe('isDuplicatePositionError detection', function () {
             new PDOException('SQLSTATE[23000]: Integrity constraint violation: 19 UNIQUE constraint failed: tasks.status, tasks.order_position')
         );
 
-        // Set errorInfo with SQLite error code
         $reflection = new ReflectionProperty($exception, 'errorInfo');
         $reflection->setAccessible(true);
         $reflection->setValue($exception, ['23000', 19, 'UNIQUE constraint failed']);
@@ -49,7 +46,6 @@ describe('isDuplicatePositionError detection', function () {
     test('detects MySQL ER_DUP_ENTRY error', function () {
         $helper = new ModernRetryMechanismTestHelper;
 
-        // MySQL duplicate entry error
         $exception = new QueryException(
             'mysql',
             'INSERT INTO tasks ...',
@@ -67,7 +63,6 @@ describe('isDuplicatePositionError detection', function () {
     test('detects PostgreSQL unique_violation error', function () {
         $helper = new ModernRetryMechanismTestHelper;
 
-        // PostgreSQL unique violation error
         $exception = new QueryException(
             'pgsql',
             'INSERT INTO tasks ...',
@@ -85,7 +80,6 @@ describe('isDuplicatePositionError detection', function () {
     test('detects error by message containing unique_position_per_column', function () {
         $helper = new ModernRetryMechanismTestHelper;
 
-        // Generic error with constraint name in message
         $exception = new QueryException(
             'sqlite',
             'INSERT INTO tasks ...',
@@ -95,7 +89,7 @@ describe('isDuplicatePositionError detection', function () {
 
         $reflection = new ReflectionProperty($exception, 'errorInfo');
         $reflection->setAccessible(true);
-        $reflection->setValue($exception, ['23000', 999, 'unknown error']); // Unknown error code
+        $reflection->setValue($exception, ['23000', 999, 'unknown error']);
 
         expect($helper->isDuplicatePositionError($exception))->toBeTrue();
     });
@@ -103,7 +97,6 @@ describe('isDuplicatePositionError detection', function () {
     test('returns false for non-duplicate errors', function () {
         $helper = new ModernRetryMechanismTestHelper;
 
-        // Foreign key constraint error (not duplicate)
         $exception = new QueryException(
             'mysql',
             'INSERT INTO tasks ...',
@@ -133,18 +126,16 @@ describe('database unique constraint behavior', function () {
     });
 
     test('same position in different columns is allowed', function () {
-        // Same position, different status (column)
         $task = Task::create([
             'title' => 'Different Column',
-            'status' => 'in_progress', // Different column
-            'order_position' => '1500.0000000000', // Same position
+            'status' => 'in_progress',
+            'order_position' => '1500.0000000000',
         ]);
 
         expect($task->exists)->toBeTrue();
     });
 
     test('null positions are allowed', function () {
-        // NULL is special in unique constraints - multiple NULLs are allowed
         Task::create(['title' => 'Null 1', 'status' => 'todo', 'order_position' => null]);
         $task2 = Task::create(['title' => 'Null 2', 'status' => 'todo', 'order_position' => null]);
 

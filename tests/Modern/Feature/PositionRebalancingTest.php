@@ -12,7 +12,6 @@ use function Illuminate\Support\enum_value;
 function runModernPositionRebalancingTests(string $label, callable $s): void
 {
     describe($label, function () use ($s) {
-        // $s is a callback that either converts a string to a RebalancingStatusEnum, or returns the string unchanged
         beforeEach(function () use ($s) {
             Task::create(['title' => 'Task 1', 'status' => $s('todo'), 'order_position' => '1000.0000000000']);
             Task::create(['title' => 'Task 2', 'status' => $s('todo'), 'order_position' => '2000.0000000000']);
@@ -22,7 +21,7 @@ function runModernPositionRebalancingTests(string $label, callable $s): void
         describe('PositionRebalancer::needsRebalancing()', function () use ($s) {
             test('detects gap below MIN_GAP', function () use ($s) {
                 Task::create(['title' => 'Close 1', 'status' => $s('in_progress'), 'order_position' => '1000.0000000000']);
-                Task::create(['title' => 'Close 2', 'status' => $s('in_progress'), 'order_position' => '1000.00005']); // Gap < MIN_GAP
+                Task::create(['title' => 'Close 2', 'status' => $s('in_progress'), 'order_position' => '1000.00005']);
 
                 $rebalancer = new PositionRebalancer;
 
@@ -51,7 +50,7 @@ function runModernPositionRebalancingTests(string $label, callable $s): void
                 expect($rebalancer->needsRebalancing(
                     Task::query(),
                     'status',
-                    (string) enum_value($s('done')), // No tasks in this column
+                    (string) enum_value($s('done')),
                     'order_position'
                 ))->toBeFalse();
             });
@@ -137,7 +136,7 @@ function runModernPositionRebalancingTests(string $label, callable $s): void
                 Task::create(['title' => 'Healthy 2', 'status' => $s('done'), 'order_position' => '2000.0000000000']);
 
                 Task::create(['title' => 'Cramped 1', 'status' => $s('blocked'), 'order_position' => '1000.0000000000']);
-                Task::create(['title' => 'Cramped 2', 'status' => $s('blocked'), 'order_position' => '1000.00005']); // Gap < MIN_GAP
+                Task::create(['title' => 'Cramped 2', 'status' => $s('blocked'), 'order_position' => '1000.00005']);
 
                 $rebalancer = new PositionRebalancer;
 
@@ -218,8 +217,8 @@ function runModernPositionRebalancingTests(string $label, callable $s): void
 
             test('counts small gaps correctly', function () use ($s) {
                 Task::create(['title' => 'A', 'status' => $s('cramped'), 'order_position' => '1000.0000000000']);
-                Task::create(['title' => 'B', 'status' => $s('cramped'), 'order_position' => '1000.00005']); // Small gap
-                Task::create(['title' => 'C', 'status' => $s('cramped'), 'order_position' => '2000.0000000000']); // Large gap
+                Task::create(['title' => 'B', 'status' => $s('cramped'), 'order_position' => '1000.00005']);
+                Task::create(['title' => 'C', 'status' => $s('cramped'), 'order_position' => '2000.0000000000']);
 
                 $rebalancer = new PositionRebalancer;
 

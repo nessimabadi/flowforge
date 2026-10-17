@@ -15,22 +15,10 @@ use Relaticle\Flowforge\Tests\Fixtures\Modern\TestCardActionModalHeadingBoard;
 use Relaticle\Flowforge\Tests\Fixtures\Modern\TestCardActionNewTabBoard;
 use Relaticle\Flowforge\Tests\Fixtures\Modern\TestCardActionTitleBoard;
 
-/**
- * A card action configured with ->url() must render the card as a native link, so
- * middle-click, cmd-click and "copy link address" keep working, instead of always
- * mounting an action modal.
- *
- * @see https://github.com/relaticle/flowforge/issues/164
- */
 beforeEach(function () {
     $this->task = Task::factory()->create(['status' => 'todo', 'title' => 'Linked task']);
 });
 
-/**
- * The card title is the click target the board wires up, so assertions have to look
- * inside it: the actions dropdown renders its own anchor for the same action and
- * would satisfy a whole-page assertion even when the card itself is not a link.
- */
 function modernCardTitleHtml(string $html): string
 {
     return str($html)
@@ -92,10 +80,6 @@ test('a modal card action marks its content as clickable', function () {
     expect($html)->toMatch('/class="[^"]*\bcursor-pointer\b[^"]*"\s+wire:click="mountAction\(\'edit\'/');
 });
 
-/**
- * getUrl() falls back to the livewire component's getDefaultActionUrl(). Filament's
- * table does the same, so a card follows it too rather than inventing its own rule.
- */
 test('card action inheriting a default action url renders as a link', function () {
     $title = modernCardTitleHtml(Livewire::test(TestCardActionDefaultUrlBoard::class)->html());
 
@@ -103,12 +87,6 @@ test('card action inheriting a default action url renders as a link', function (
         ->and($title)->not->toContain("mountAction('run'");
 });
 
-/**
- * Filament decides this on the url alone. ListRecords::table() has recordAction() skip
- * any action whose getUrl() is filled and recordUrl() pick it up instead, without
- * consulting the action's modal state, so a url action that also declares a
- * confirmation renders as a plain link in a table row too. A board card matches that.
- */
 test('a url card action that also declares a confirmation renders as a link', function () {
     $title = modernCardTitleHtml(Livewire::test(TestCardActionConfirmBoard::class)->html());
 
