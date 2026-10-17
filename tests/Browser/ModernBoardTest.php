@@ -1,0 +1,387 @@
+<?php
+
+declare(strict_types=1);
+
+use Pest\Browser\Api\AwaitableWebpage;
+use Relaticle\Flowforge\Tests\Browser\Support\Pointer;
+use Relaticle\Flowforge\Tests\Fixtures\Modern\BrowserUser;
+use Relaticle\Flowforge\Tests\Fixtures\Modern\Task;
+
+use function Pest\Laravel\actingAs;
+
+function boardPage(string $path, array $options = [], bool $dark = false): AwaitableWebpage
+{
+    $visit = visit($path, $options);
+
+    return ($dark ? $visit->inDarkMode() : $visit)->assertSee('To Do');
+}
+
+function boardSeed(string $priority = 'medium'): array
+{
+    $rows = [['A', 'todo', 1000], ['B', 'todo', 2000], ['C', 'todo', 3000], ['D', 'in_progress', 1000]];
+
+    return array_map(fn (array $row): Task => Task::query()->create([
+        'title' => $row[0],
+        'status' => $row[1],
+        'order_position' => "{$row[2]}.0000000000",
+        'priority' => $priority,
+    ]), $rows);
+}
+
+function boardCard(Task $task): string
+{
+    return "[data-card-id=\"{$task->id}\"]";
+}
+
+function boardOrder(AwaitableWebpage $page, string $column): array
+{
+    $ids = $page->script("[...document.querySelectorAll('[data-column-id=\"{$column}\"] > [data-card-id]')].map((card) => card.dataset.cardId)");
+
+    return array_map('intval', $ids);
+}
+
+function boardStored(string $status): array
+{
+    return Task::query()->where('status', $status)->orderBy('order_position')->pluck('id')->map(fn ($id): int => (int) $id)->all();
+}
+
+function boardCount(AwaitableWebpage $page, string $column): string
+{
+    return $page->script("document.querySelector('[data-column-root=\"{$column}\"] .ff-count').innerText.trim()");
+}
+
+function boardStyle(AwaitableWebpage $page, string $selector, string $property): string
+{
+    $selectorJson = json_encode($selector);
+    $propertyJson = json_encode($property);
+
+    return $page->script("getComputedStyle(document.querySelector({$selectorJson})).getPropertyValue({$propertyJson})");
+}
+
+function boardCountRequests(AwaitableWebpage $page): void
+{
+    $page->script(<<<'JS'
+        (() => {
+            window.__updates = 0;
+            const send = window.fetch;
+
+            window.fetch = function (...args) {
+                if (String(args[0]?.url ?? args[0]).includes('livewire')) {
+                    window.__updates++;
+                }
+
+                return send.apply(this, args);
+            };
+        })()
+    JS);
+}
+
+function boardUpdates(AwaitableWebpage $page): int
+{
+    return (int) $page->script('window.__updates');
+}
+
+beforeEach(function () {
+    actingAs(BrowserUser::query()->create(['name' => 'Ada', 'email' => 'ada@example.com', 'password' => 'secret']));
+});
+
+test('a modern board page loads in a real browser', function () {
+    boardSeed();
+
+    boardPage('/modern/test-board')->assertNoJavaScriptErrors();
+});
+
+test('a card dropped between two cards keeps its place after a reload', function () {
+    [$a, $b, $c, $d] = boardSeed();
+    $page = boardPage('/modern/test-board');
+    $pointer = Pointer::on($page);
+
+    $pointer->drag(boardCard($d), boardCard($b), 0.25);
+    $pointer->until(fn () => boardStored('todo') === [$a->id, $d->id, $b->id, $c->id]);
+
+    expect(boardOrder($page, 'todo'))->toBe([$a->id, $d->id, $b->id, $c->id])
+        ->and($d->refresh()->status)->toBe('todo');
+
+    $page->refresh();
+    $pointer->until(fn () => boardOrder($page, 'todo') === [$a->id, $d->id, $b->id, $c->id]);
+
+    expect(boardOrder($page, 'in_progress'))->toBe([]);
+});
+
+test('header counts change while a card hovers and stay right after the drop', function () {
+    [$a, $b, $c, $d] = boardSeed();
+    $page = boardPage('/modern/test-board');
+    $pointer = Pointer::on($page);
+
+    expect(boardCount($page, 'todo'))->toBe('3')
+        ->and(boardCount($page, 'in_progress'))->toBe('1');
+
+    $pointer->press(boardCard($d))->glideTo(boardCard($b), yFraction: 0.25);
+
+    expect(boardCount($page, 'todo'))->toBe('4')
+        ->and(boardCount($page, 'in_progress'))->toBe('0')
+        ->and(boardCount($page, 'completed'))->toBe('0');
+
+    $pointer->release();
+    $pointer->until(fn () => boardStored('todo') === [$a->id, $d->id, $b->id, $c->id]);
+    $pointer->until(fn () => boardCount($page, 'todo') === '4' && boardCount($page, 'in_progress') === '0');
+
+    expect(boardCount($page, 'completed'))->toBe('0');
+});
+
+test('a refused drop returns the card to its index with a message', function () {
+    [$a, $b, $c, $d] = boardSeed();
+    $page = boardPage('/modern/test-board');
+    $pointer = Pointer::on($page);
+
+    $pointer->press(boardCard($b))->glideTo(boardCard($d), yFraction: 0.25);
+
+    expect(boardOrder($page, 'todo'))->toBe([$a->id, $c->id]);
+
+    $b->delete();
+    $pointer->release();
+
+    $page->assertSee('That card is no longer on the board');
+    $pointer->until(fn () => $page->script("! document.querySelector('[data-pending]')"));
+
+    expect(boardOrder($page, 'todo'))->toBe([$a->id, $b->id, $c->id])
+        ->and(boardOrder($page, 'in_progress'))->toBe([$d->id]);
+});
+
+test('a full column refuses a drop at hover', function () {
+    [$a, $b, $c, $d] = boardSeed();
+    $page = boardPage('/modern/test-browser-board');
+    $pointer = Pointer::on($page);
+    boardCountRequests($page);
+
+    $pointer->press(boardCard($d))->glideTo(boardCard($b), yFraction: 0.25);
+
+    $page->assertScript("document.querySelector('[data-column-root=\"todo\"]').dataset.drop === 'blocked'")
+        ->assertScript("getComputedStyle(document.querySelector('.ff-limit-hint')).display !== 'none'");
+
+    $pointer->release()->wait(800);
+
+    expect(boardUpdates($page))->toBe(0)
+        ->and(boardOrder($page, 'todo'))->toBe([$a->id, $b->id, $c->id])
+        ->and(boardOrder($page, 'in_progress'))->toBe([$d->id])
+        ->and($d->refresh()->status)->toBe('in_progress');
+
+    $pointer->drag(boardCard($a), boardCard($d), 0.25);
+    $pointer->until(fn () => $a->refresh()->status === 'in_progress');
+
+    expect(boardUpdates($page))->toBeGreaterThan(0);
+});
+
+test('a card moves to another lane', function () {
+    $rows = [['Low one', 'low', 1000], ['Low two', 'low', 2000], ['High one', 'high', 3000]];
+    [$lowOne, $lowTwo, $highOne] = array_map(fn (array $row): Task => Task::query()->create([
+        'title' => $row[0],
+        'status' => 'todo',
+        'priority' => $row[1],
+        'order_position' => "{$row[2]}.0000000000",
+    ]), $rows);
+
+    $page = boardPage('/modern/test-grouped-board?groupBy=priority');
+    $pointer = Pointer::on($page);
+
+    $pointer->drag(boardCard($lowOne), boardCard($highOne), 0.25);
+    $pointer->until(fn () => $lowOne->refresh()->priority === 'high');
+
+    expect($lowTwo->refresh()->priority)->toBe('low')
+        ->and($page->script("[...document.querySelectorAll('[data-lane-id=\"high\"][data-column-id=\"todo\"] > [data-card-id]')].map((card) => Number(card.dataset.cardId))"))
+        ->toBe([$lowOne->id, $highOne->id]);
+});
+
+test('a drag selects no text', function () {
+    [, $b, , $d] = boardSeed();
+    $page = boardPage('/modern/test-board');
+    $pointer = Pointer::on($page);
+
+    $pointer->press(boardCard($d))->glideTo(boardCard($b))->glideTo('[data-column-root="completed"]');
+
+    $page->assertScript('window.getSelection().toString() === ""');
+
+    $pointer->release();
+});
+
+test('reduced motion leaves the dragged card untilted', function () {
+    [, $b, , $d] = boardSeed();
+    $dragged = '.ff-card[data-dragging] > .ff-card-body';
+
+    $page = boardPage('/modern/test-board');
+    $pointer = Pointer::on($page);
+    $pointer->press(boardCard($d))->glideTo(boardCard($b));
+    $tilted = boardStyle($page, $dragged, 'rotate');
+    $pointer->release();
+
+    $reduced = boardPage('/modern/test-board', ['reducedMotion' => 'reduce']);
+    $reducedPointer = Pointer::on($reduced);
+    $reducedPointer->press(boardCard($d))->glideTo(boardCard($b));
+    $untilted = boardStyle($reduced, $dragged, 'rotate');
+    $reducedPointer->release();
+
+    expect($tilted)->not->toBe('none')
+        ->and($untilted)->toBe('none');
+});
+
+test('dark mode switches the defaults', function () {
+    boardSeed();
+
+    $light = boardPage('/modern/test-board');
+    $dark = boardPage('/modern/test-board', dark: true);
+
+    $dark->assertScript('document.documentElement.classList.contains("dark")');
+
+    expect(boardStyle($dark, '.ff-tray', 'background-color'))->not->toBe(boardStyle($light, '.ff-tray', 'background-color'))
+        ->and(boardStyle($dark, '.ff-card', 'background-color'))->not->toBe(boardStyle($light, '.ff-card', 'background-color'));
+});
+
+test('dragging sets the documented states', function () {
+    [$a, $b, $c, $d] = boardSeed();
+    $page = boardPage('/modern/test-board');
+    $pointer = Pointer::on($page);
+
+    $page->script(<<<'JS'
+        (() => {
+            window.__pendingSeen = false;
+
+            new MutationObserver(() => {
+                window.__pendingSeen ||= document.querySelector('[data-pending]') !== null;
+            }).observe(document.body, { attributes: true, subtree: true, attributeFilter: ['data-pending'] });
+        })()
+    JS);
+
+    $pointer->press(boardCard($d))->glideTo(boardCard($b), yFraction: 0.25);
+
+    $page->assertScript('document.querySelectorAll("body > .ff-card[data-dragging]").length === 1')
+        ->assertScript('document.querySelectorAll("[data-column-id=\"todo\"] > [data-placeholder]").length === 1')
+        ->assertScript('document.querySelector("[data-column-root=\"todo\"]").dataset.drop === "active"');
+
+    $pointer->release();
+    $pointer->until(fn () => boardStored('todo') === [$a->id, $d->id, $b->id, $c->id]);
+    $pointer->until(fn () => $page->script('window.__pendingSeen && ! document.querySelector("[data-pending]")'));
+
+    $page->assertScript('document.querySelectorAll("[data-dragging], [data-placeholder], [data-drop], [data-pending]").length === 0');
+});
+
+test('app tokens win at every scope', function () {
+    [, $b, , $d] = boardSeed();
+    $page = boardPage('/modern/test-board');
+    $pointer = Pointer::on($page);
+
+    $page->script(<<<'JS'
+        (() => {
+            const style = document.createElement('style');
+            style.textContent = ':root { --ff-tray-bg: rgb(1, 2, 3); --ff-card-bg: rgb(7, 8, 9); } .ff-board { --ff-card-bg: rgb(4, 5, 6); }';
+            document.head.append(style);
+            document.querySelector('.ff-card').style.setProperty('--ff-card-radius', '3px');
+        })()
+    JS);
+
+    $pointer->wait(500);
+
+    expect(boardStyle($page, '.ff-tray', 'background-color'))->toBe('rgb(1, 2, 3)')
+        ->and(boardStyle($page, boardCard($b), 'background-color'))->toBe('rgb(4, 5, 6)')
+        ->and(boardStyle($page, '.ff-card', 'border-top-left-radius'))->toBe('3px')
+        ->and(boardStyle($page, boardCard($b), 'border-top-left-radius'))->not->toBe('3px');
+
+    $pointer->press(boardCard($d))->glideTo(boardCard($b), yFraction: 0.25);
+
+    expect(boardStyle($page, 'body > .ff-card[data-dragging] > .ff-card-body', 'background-color'))->toBe('rgb(4, 5, 6)');
+
+    $pointer->release();
+});
+
+test('modern assets load on an spa visit', function () {
+    [$a, $b, $c, $d] = boardSeed();
+    $page = boardPage('/modern/test-classic-board');
+    $pointer = Pointer::on($page);
+    $page->script('window.__spaVisit = true');
+
+    $pointer->click('a[href$="/modern/test-board"]');
+    $pointer->until(fn () => $page->script('document.querySelector(".ff-board") !== null'));
+
+    $page->assertScript('window.__spaVisit === true')
+        ->assertScript('getComputedStyle(document.querySelector(".ff-tray")).backgroundColor !== "rgba(0, 0, 0, 0)"');
+
+    $pointer->drag(boardCard($d), boardCard($b), 0.25);
+    $pointer->until(fn () => boardStored('todo') === [$a->id, $d->id, $b->id, $c->id]);
+
+    $page->assertNoJavaScriptErrors();
+});
+
+test('a classic board stays classic after a modern visit', function () {
+    boardSeed();
+    $probe = <<<'JS'
+        (() => {
+            const read = (selector) => {
+                const style = getComputedStyle(document.querySelector(selector));
+
+                return ['display', 'width', 'padding-top', 'background-color', 'border-top-left-radius', 'box-shadow', 'min-height']
+                    .map((property) => style.getPropertyValue(property));
+            };
+
+            return JSON.stringify({
+                column: read('[x-sortable]'),
+                card: read('[x-sortable-item]'),
+                modernElements: [...document.querySelectorAll('*')].filter((element) => [...element.classList].some((name) => name.startsWith('ff-'))).length,
+                modernBehaviour: document.querySelector('[x-sortable]').closest('[x-data]')._x_dataStack.some((data) => 'configureSortable' in data),
+            });
+        })()
+    JS;
+
+    $baseline = boardPage('/modern/test-classic-board');
+    $classic = json_decode($baseline->script($probe), true);
+
+    $page = boardPage('/modern/test-board');
+    $pointer = Pointer::on($page);
+    $pointer->until(fn () => $page->script('document.querySelector(".ff-tray") !== null'));
+    $pointer->click('a[href$="/modern/test-classic-board"]');
+    $pointer->until(fn () => $page->script('document.querySelector(".ff-board") === null && document.querySelector("[x-sortable]") !== null'));
+
+    expect(json_decode($page->script($probe), true))->toBe($classic)
+        ->and($classic['modernElements'])->toBe(0)
+        ->and($classic['modernBehaviour'])->toBeFalse();
+});
+
+test('the lane header row stays visible while the lanes scroll', function () {
+    foreach (range(1, 36) as $index) {
+        Task::query()->create([
+            'title' => "Card {$index}",
+            'status' => 'todo',
+            'priority' => ['low', 'medium', 'high'][$index % 3],
+            'order_position' => ($index * 1000) . '.0000000000',
+        ]);
+    }
+
+    $page = boardPage('/modern/test-grouped-board?groupBy=priority');
+    $pointer = Pointer::on($page);
+    $page->script('document.querySelector(".ff-lanes").scrollTop = 700');
+    $pointer->wait(200);
+
+    $page->assertScript('document.querySelector(".ff-lanes").scrollTop > 400')
+        ->assertScript(<<<'JS'
+            (() => {
+                const lanes = document.querySelector('.ff-lanes').getBoundingClientRect();
+                const heads = document.querySelector('.ff-lanes-heads').getBoundingClientRect();
+                const topmost = document.elementFromPoint(heads.left + 40, heads.top + heads.height / 2);
+
+                return Math.abs(heads.top - lanes.top) <= 1 && topmost.closest('.ff-lanes-heads') !== null;
+            })()
+        JS);
+});
+
+test('a full column and a collapsed rail carry their server-side states', function () {
+    boardSeed();
+    $page = boardPage('/modern/test-browser-board');
+
+    $page->assertScript('document.querySelector("[data-column-root=\"todo\"]").hasAttribute("data-full")')
+        ->assertScript('! document.querySelector("[data-column-root=\"in_progress\"]").hasAttribute("data-full")')
+        ->assertScript('document.querySelector("[data-column-root=\"completed\"]").hasAttribute("data-collapsed")')
+        ->assertScript('! document.querySelector("[data-column-root=\"todo\"]").hasAttribute("data-collapsed")');
+
+    expect(boardCount($page, 'todo'))->toBe('3/3')
+        ->and(boardStyle($page, '[data-column-root="todo"] .ff-count', 'color'))->not->toBe(boardStyle($page, '[data-column-root="in_progress"] .ff-count', 'color'))
+        ->and(boardStyle($page, '[data-column-root="completed"]', 'width'))->toBe('48px')
+        ->and(boardStyle($page, '[data-column-root="todo"]', 'width'))->toBe('300px');
+});

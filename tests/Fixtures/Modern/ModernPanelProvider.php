@@ -25,8 +25,12 @@ class ModernPanelProvider extends PanelProvider
             ->id('modern')
             ->path('modern')
             ->login()
+            ->spa()
             ->pages([
                 TestBoard::class,
+                TestBrowserBoard::class,
+                TestClassicBoard::class,
+                TestGroupedBoard::class,
                 TestCardActionBoard::class,
                 TestCardActionConfirmBoard::class,
                 TestCardActionDefaultUrlBoard::class,

@@ -136,3 +136,43 @@ jobs:
           DB_USERNAME: postgres
           DB_PASSWORD: postgres
         run: vendor/bin/pest --ci --group=pgsql
+
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - browser: chrome
+            engine: chromium
+          - browser: safari
+            engine: webkit
+
+    name: Browser - ${{ matrix.engine }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
+        with:
+          php-version: 8.4
+          extensions: dom, curl, libxml, mbstring, zip, pcntl, pdo, sqlite, pdo_sqlite, bcmath, intl, gd, exif, iconv, fileinfo, sockets
+          coverage: none
+
+      - name: Install dependencies
+        run: |
+          composer require "laravel/framework:13.*" "orchestra/testbench:11.*" --no-interaction --no-update
+          composer update --prefer-stable --prefer-dist --no-interaction
+          npm ci
+
+      - name: Install Playwright ${{ matrix.engine }}
+        run: npx playwright install --with-deps ${{ matrix.engine }}
+
+      - name: Execute browser tests
+        run: vendor/bin/pest tests/Browser --browser ${{ matrix.browser }} --ci
