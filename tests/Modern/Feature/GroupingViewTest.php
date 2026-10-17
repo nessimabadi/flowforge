@@ -28,10 +28,23 @@ test('a board without groupings shows no picker', function () {
 });
 
 test('the picker lists every grouping', function () {
-    Livewire::test(TestGroupedBoard::class)
-        ->assertSeeHtml('>' . __('flowforge::flowforge.group_by') . '</label>')
-        ->assertSeeHtml('value="priority"')
-        ->assertSeeHtml('value="assignee"');
+    $html = html_entity_decode(Livewire::test(TestGroupedBoard::class)->html(), ENT_QUOTES);
+
+    expect(substr_count($html, 'role="menuitemradio"'))->toBe(substr_count($html, 'ff-grouping-option'))
+        ->and($html)->toContain("\$wire.\$set('groupBy', null)")
+        ->toContain("\$wire.\$set('groupBy', 'priority')")
+        ->toContain("\$wire.\$set('groupBy', 'assignee')");
+});
+
+test('the picker button names the active grouping and the menu checks it', function () {
+    $component = Livewire::test(TestGroupedBoard::class)
+        ->assertSeeHtml('aria-label="' . __('flowforge::flowforge.group_by') . '"')
+        ->set('groupBy', 'priority')
+        ->assertSeeHtml('aria-label="' . __('flowforge::flowforge.group_by') . ': Priority"')
+        ->assertSeeHtml('data-grouped');
+
+    expect($component->html())->toMatch('/aria-checked="true"[^>]*>(?:(?!<\/button>).)*Priority/s')
+        ->and(substr_count($component->html(), 'aria-checked="true"'))->toBe(1);
 });
 
 test('choosing a grouping renders a lane per value', function () {
@@ -240,7 +253,7 @@ test('a client cannot write paging state', function (string $property, mixed $va
     ['columnCardLimits', ['todo' => 1000000]],
 ]);
 
-test('the picker select has an id of its own per board', function () {
+test('the picker button has an id of its own per board', function () {
     $component = Livewire::test(TestGroupedBoard::class);
 
     $component->assertSeeHtml('id="flowforge-group-by-' . $component->id() . '"');
