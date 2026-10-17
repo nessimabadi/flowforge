@@ -12,6 +12,7 @@ Use when:
 - Configuring board columns, cards, and actions
 - Implementing drag-and-drop with position management
 - Building Filament board pages or standalone Livewire boards
+- Opting a board into the Modern board (limits, summaries, card components, swimlanes) or restyling it
 - Troubleshooting position column issues
 
 ## Quick Start
@@ -284,6 +285,99 @@ use Filament\Actions\DeleteAction;
 ])
 ```
 
+## Modern Board
+
+A board is classic by default and stays classic after an upgrade. Opt in per page with one import:
+
+```php
+use Relaticle\Flowforge\Modern\BoardPage;          // or Modern\BoardResourcePage
+use Relaticle\Flowforge\Modern\Concerns\InteractsWithBoard; // standalone Livewire
+```
+
+The settings below work on Modern boards only. A classic board ignores them. Docs: https://relaticle.github.io/flowforge/essentials/customization
+
+### Add Card Action
+
+```php
+->createCardAction(
+    CreateAction::make('createTask')
+        ->model(Task::class)
+        ->schema([TextInput::make('title')->required()])
+        ->mutateDataUsing(fn (array $data, array $arguments): array => [
+            ...$data,
+            'status' => $arguments['column'],
+            'position' => $this->getBoardPositionInColumn($arguments['column'], 'bottom'),
+        ]),
+)
+```
+
+Renders a `+` in each column header and an add row under the cards. Flowforge owns the action's `disabled()` state and disables it for full and unknown columns. Use `visible()` or `authorize()` to block creation.
+
+### Card Components
+
+```php
+use Relaticle\Flowforge\Components\{CardAvatar, CardFlex, CardMeta, CardTag, CardTitle};
+
+->cardSchema(fn (Schema $schema): Schema => $schema->components([
+    CardFlex::make([
+        CardTag::make('category'),
+        CardAvatar::make('assignees')->limit(3),
+    ])->justify('between'),
+    CardTitle::make(),
+    CardMeta::make([TextEntry::make('due_date')->date('M j')]),
+]))
+```
+
+These components are styled on Modern boards only.
+
+### Column Limits
+
+```php
+Column::make('in_progress')->limit(3)
+```
+
+The header reads `3/3`, a full column refuses drops while the card hovers, and the add row disables. The limit counts every card in the column, including cards a filter hides. The server re-checks under a cache lock, so use a shared cache store with locks (redis, memcached, database, dynamodb): the `array` store locks per process and `null` never blocks.
+
+### Column Summaries
+
+```php
+->columnSummary(fn (Builder $columnQuery): ?string => Number::currency($columnQuery->sum('amount')))
+```
+
+The closure gets the column's query with the active filters and search applied. Return `null` to hide the summary.
+
+### Swimlanes
+
+```php
+->groupings([
+    Grouping::attribute('priority'),
+
+    Grouping::make('assignee')
+        ->lanes(fn (Builder $boardQuery): array => $this->assigneeLanes($boardQuery))
+        ->emptyLane('Unassigned', fn (Builder $query): Builder => $query->whereDoesntHave('assignees'))
+        ->moveUsing(function (Task $card, Lane $from, Lane $to): void {
+            // sync the relation: $from is the lane the card left, $to the lane it entered
+        }),
+])
+```
+
+A "Group by" select appears and the choice lives in `?groupBy=`. `lanes()` returns `Lane::make($name)->label()->query(fn (Builder $query) => ...)` objects. Give every custom grouping an `emptyLane()`, because the header `+` creates a card without knowing the lane. Without `moveUsing()` the lanes are read-only. Throw `CardMoveRejectedException::because('...')` in `moveUsing()` to refuse a move and roll back both writes. `collapseEmptyColumns()` applies to the plain board only.
+
+### Styling a Modern Board
+
+Style through the design system, never by copying views or targeting `flowforge-*` classes. It has three parts:
+
+- Variables: `--ff-*`, such as `--ff-accent`, `--ff-radius` and `--ff-card-bg`. Set them on `:root`, `.ff-board` or one card.
+- Hooks: `ff-*` classes, such as `ff-board`, `ff-column`, `ff-card` and `ff-tray`.
+- States: data attributes, such as `data-drop="blocked"`, `data-full`, `data-dragging` and `data-pending`.
+
+```css
+:root { --ff-accent: var(--primary-600); --ff-radius: .5rem; }
+.ff-column[data-drop="blocked"] .ff-tray { outline: 2px dashed var(--ff-danger); }
+```
+
+Shadow variables take a shadow list: use `0 0 #0000` for no shadow, never `none`. `--ff-surface` paints the sticky lane-header strip, so set it to the page background. The full variable table, hook list, `!important` list and versioning rule are in the Design System docs: https://relaticle.github.io/flowforge/essentials/design-system
+
 ## Position Management
 
 Flowforge uses `DECIMAL(20,10)` positions with BCMath precision for reliable ordering.
@@ -322,21 +416,45 @@ $positions = DecimalPosition::generateSequence(count: 100);
 
 ### Manual Card Movement
 
+On a classic board, override `moveCard()` and call the parent:
+
 ```php
-// In your Livewire component
 public function moveCard(
     int|string $recordId,
     string $toColumn,
     ?string $afterRecordId = null,
     ?string $beforeRecordId = null
 ): void {
-    // Parent handles position calculation and saving
     parent::moveCard($recordId, $toColumn, $afterRecordId, $beforeRecordId);
 
-    // Add custom logic after move
     $this->dispatch('card-moved');
 }
 ```
+
+On a Modern board, override the hooks, not `moveCard()`. Flowforge keeps the column check, limits, lanes and the browser revert.
+
+```php
+use Illuminate\Database\Eloquent\Model;
+use Relaticle\Flowforge\Exceptions\CardMoveRejectedException;
+
+protected function authorizeCardMove(Model $card, string $targetColumnId, ?string $toLaneId = null): void
+{
+    if (! auth()->user()->can('update', $card)) {
+        throw CardMoveRejectedException::because('You cannot move this card.');
+    }
+}
+
+protected function persistCardMove(Model $card, mixed $columnValue, string $position): void
+{
+    parent::persistCardMove($card, $columnValue, $position);
+
+    if ($columnValue === 'completed') {
+        $card->update(['completed_at' => now()]);
+    }
+}
+```
+
+`persistCardMove()` runs inside the move's database transaction. Throw `CardMoveRejectedException::because()` from either hook to refuse with a toast and revert the card. An `abort(403)` reverts the card but shows Livewire's error UI. Modern `moveCard()` returns `bool` and takes `?string $fromLaneId` and `?string $toLaneId`.
 
 ## Artisan Commands
 
@@ -457,6 +575,10 @@ public function board(Board $board): Board
         );
 }
 ```
+
+### Joined Board Queries
+
+Select the base table's columns explicitly, `->select('tasks.*', 'joined.column')`. With `select *`, a joined `id` overwrites the card's key.
 
 ### Eager Loading for Cards
 
