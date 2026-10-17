@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Pest\Browser\Api\AwaitableWebpage;
+use Relaticle\Flowforge\Tests\Browser\Support\PageHandle;
 use Relaticle\Flowforge\Tests\Browser\Support\Pointer;
 use Relaticle\Flowforge\Tests\Fixtures\Modern\BrowserUser;
 use Relaticle\Flowforge\Tests\Fixtures\Modern\Task;
@@ -384,4 +385,36 @@ test('a full column and a collapsed rail carry their server-side states', functi
         ->and(boardStyle($page, '[data-column-root="todo"] .ff-count', 'color'))->not->toBe(boardStyle($page, '[data-column-root="in_progress"] .ff-count', 'color'))
         ->and(boardStyle($page, '[data-column-root="completed"]', 'width'))->toBe('48px')
         ->and(boardStyle($page, '[data-column-root="todo"]', 'width'))->toBe('300px');
+});
+
+test('the board never paints unstyled on a cold load', function () {
+    boardSeed();
+    $page = boardPage('/modern/test-classic-board');
+    $pointer = Pointer::on($page);
+
+    PageHandle::navigateWithInitScript($page, '/modern/test-board', <<<'JS'
+        (() => {
+            window.__trayBackgrounds = [];
+
+            const sample = () => {
+                const tray = document.querySelector('.ff-tray');
+
+                if (tray) {
+                    window.__trayBackgrounds.push(getComputedStyle(tray).backgroundColor);
+                }
+
+                if (window.__trayBackgrounds.length < 30 && performance.now() < 5000) {
+                    requestAnimationFrame(sample);
+                }
+            };
+
+            requestAnimationFrame(sample);
+        })()
+    JS);
+
+    $pointer->until(fn () => count($page->script('window.__trayBackgrounds')) >= 30);
+    $backgrounds = $page->script('window.__trayBackgrounds');
+
+    expect($backgrounds[0])->not->toBe('rgba(0, 0, 0, 0)')
+        ->and($backgrounds[0])->toBe(end($backgrounds));
 });

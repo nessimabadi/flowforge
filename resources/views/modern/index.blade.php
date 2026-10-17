@@ -2,7 +2,7 @@
 @props(['columns', 'config', 'lanes' => [], 'hasMoreLanes' => false, 'groupings' => []])
 
 <div style="display: contents">
-<span hidden x-load-css="[@js(FilamentAsset::getStyleHref('flowforge-modern', package: 'relaticle/flowforge'))]"></span>
+<link rel="stylesheet" href="{{ FilamentAsset::getStyleHref('flowforge-modern', package: 'relaticle/flowforge') }}">
 
 <div
     class="ff-board"

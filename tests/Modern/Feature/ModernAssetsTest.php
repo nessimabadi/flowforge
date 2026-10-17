@@ -12,19 +12,19 @@ test('a modern board loads its own script and stylesheet on request', function (
 
     expect($html)->toContain('flowforge-modern.js')
         ->and($html)->toContain('flowforge-modern.css')
-        ->and($html)->toContain('x-load-css')
         ->and($html)->toContain('flowforgeModern(');
 });
 
-test('the stylesheet loads from an element that does not wait on the script', function () {
+test('the stylesheet is a plain link ahead of the board inside the single root', function () {
     $html = Livewire::test(ModernTestBoard::class)->html();
 
-    preg_match_all('/<[a-z]+\b[^>]*x-load-css=[^>]*>/i', $html, $stylesheetTags);
-    preg_match_all('/<[a-z]+\b[^>]*\sx-load(?=[\s>])[^>]*>/i', $html, $scriptTags);
+    preg_match_all('/<link\b[^>]*flowforge-modern\.css[^>]*>/i', $html, $stylesheetTags);
 
     expect($stylesheetTags[0])->toHaveCount(1)
-        ->and($scriptTags[0])->toHaveCount(1)
-        ->and($stylesheetTags[0][0])->not->toMatch('/\sx-load(\s|>)/');
+        ->and($stylesheetTags[0][0])->toContain('rel="stylesheet"')
+        ->and($html)->not->toContain('x-load-css')
+        ->and(strpos($html, 'flowforge-modern.css'))->toBeLessThan(strpos($html, 'class="ff-board"'))
+        ->and(strpos($html, '<div style="display: contents">'))->toBeLessThan(strpos($html, 'flowforge-modern.css'));
 });
 
 test('a classic board references no modern asset', function () {
