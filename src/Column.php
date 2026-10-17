@@ -40,9 +40,23 @@ class Column extends ViewComponent
 
     protected string $name;
 
+    protected int | Closure | null $limit = null;
+
     final public function __construct(string $name)
     {
         $this->name = $name;
+    }
+
+    public function limit(int | Closure | null $limit): static
+    {
+        $this->limit = $limit;
+
+        return $this;
+    }
+
+    public function getLimit(): ?int
+    {
+        return $this->evaluate($this->limit);
     }
 
     public static function make(?string $name = null): static

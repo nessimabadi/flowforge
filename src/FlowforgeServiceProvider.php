@@ -4,14 +4,18 @@ namespace Relaticle\Flowforge;
 
 use Filament\Support\Assets\AlpineComponent;
 use Filament\Support\Assets\Asset;
+use Filament\Support\Assets\Css;
 use Filament\Support\Facades\FilamentAsset;
 use Filament\Support\Facades\FilamentIcon;
+use Filament\Support\Facades\FilamentView;
+use Filament\View\PanelsRenderHook;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Blade;
 use Relaticle\Flowforge\Commands\DiagnosePositionsCommand;
 use Relaticle\Flowforge\Commands\MakeKanbanBoardCommand;
 use Relaticle\Flowforge\Commands\RebalancePositionsCommand;
 use Relaticle\Flowforge\Commands\RepairPositionsCommand;
+use Relaticle\Flowforge\Modern\Concerns\InteractsWithBoard as ModernInteractsWithBoard;
 use Spatie\LaravelPackageTools\Commands\InstallCommand;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
@@ -64,6 +68,8 @@ class FlowforgeServiceProvider extends PackageServiceProvider
             $this->getAssetPackageName()
         );
 
+        $this->registerModernAssets();
+
         FilamentAsset::registerScriptData(
             $this->getScriptData(),
             $this->getAssetPackageName()
@@ -93,6 +99,14 @@ class FlowforgeServiceProvider extends PackageServiceProvider
         Blade::component('flowforge::livewire.empty-column', 'flowforge::empty-column');
         Blade::component('flowforge::livewire.card', 'flowforge::card');
         Blade::component('flowforge::livewire.column-count', 'flowforge::column-count');
+
+        Blade::component('flowforge::modern.livewire.column', 'flowforge::modern.column');
+        Blade::component('flowforge::modern.livewire.column-header', 'flowforge::modern.column-header');
+        Blade::component('flowforge::modern.livewire.card', 'flowforge::modern.card');
+        Blade::component('flowforge::modern.livewire.column-count', 'flowforge::modern.column-count');
+        Blade::component('flowforge::modern.livewire.add-card-row', 'flowforge::modern.add-card-row');
+        Blade::component('flowforge::modern.livewire.lanes', 'flowforge::modern.lanes');
+        Blade::component('flowforge::modern.components.grouping-picker', 'flowforge::modern.grouping-picker');
     }
 
     protected function getAssetPackageName(): ?string
@@ -108,6 +122,37 @@ class FlowforgeServiceProvider extends PackageServiceProvider
         return [
             AlpineComponent::make('flowforge', __DIR__ . '/../resources/dist/flowforge.js'),
         ];
+    }
+
+    private function registerModernAssets(): void
+    {
+        FilamentAsset::register([
+            AlpineComponent::make('flowforge-modern', __DIR__ . '/../resources/dist/flowforge-modern.js'),
+            Css::make('flowforge-modern', __DIR__ . '/../resources/css/flowforge-modern.css')->loadedOnRequest(),
+        ], $this->getAssetPackageName());
+
+        if (class_exists(PanelsRenderHook::class)) {
+            FilamentView::registerRenderHook(
+                PanelsRenderHook::STYLES_AFTER,
+                fn (array $scopes): string => $this->rendersModernBoard($scopes)
+                    ? view('flowforge::modern.stylesheet')->render()
+                    : '',
+            );
+        }
+    }
+
+    /**
+     * @param  array<int, mixed>  $scopes
+     */
+    private function rendersModernBoard(array $scopes): bool
+    {
+        foreach ($scopes as $scope) {
+            if (is_string($scope) && class_exists($scope) && in_array(ModernInteractsWithBoard::class, class_uses_recursive($scope), true)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

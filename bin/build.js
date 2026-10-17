@@ -48,3 +48,9 @@ compile({
     entryPoints: ['./resources/js/flowforge.js'],
     outfile: './resources/dist/flowforge.js',
 })
+
+compile({
+    ...defaultOptions,
+    entryPoints: ['./resources/js/flowforge-modern.js'],
+    outfile: './resources/dist/flowforge-modern.js',
+})

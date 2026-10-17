@@ -69,6 +69,11 @@ class TaskBoard extends Component implements HasBoard
 php artisan flowforge:make-board TaskBoard --model=Task
 ```
 
+**Modern board** (opt-in, from 4.2): change one import to get column limits, summaries, card components and swimlanes, styled through a documented design system.
+```php
+use Relaticle\Flowforge\Modern\BoardResourcePage;
+```
+
 **[View Complete Documentation →](https://relaticle.github.io/flowforge/)**
 
 ## Our Ecosystem

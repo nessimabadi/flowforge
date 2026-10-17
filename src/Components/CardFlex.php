@@ -9,6 +9,7 @@ use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Schemas\Components\Component;
 use Illuminate\Contracts\Support\Htmlable;
+use Relaticle\Flowforge\Modern\Concerns\InteractsWithBoard as ModernInteractsWithBoard;
 
 class CardFlex extends Component
 {
@@ -39,6 +40,13 @@ class CardFlex extends Component
         $static->configure();
 
         return $static;
+    }
+
+    public function getView(): string
+    {
+        $onModernBoard = in_array(ModernInteractsWithBoard::class, class_uses_recursive($this->getLivewire()), true);
+
+        return $onModernBoard ? 'flowforge::modern.components.card-flex' : parent::getView();
     }
 
     /**
