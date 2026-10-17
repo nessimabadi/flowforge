@@ -140,6 +140,7 @@ trait InteractsWithBoard
 
         return Board::make($this)
             ->view($view)
+            ->stringColumnIds()
             ->query(fn (): ?Builder => $this->getBoardQuery());
     }
 

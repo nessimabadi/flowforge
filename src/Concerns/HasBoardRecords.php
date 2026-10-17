@@ -22,6 +22,8 @@ trait HasBoardRecords
 
     protected int $cardsPerColumn = 20;
 
+    protected bool $stringColumnIds = false;
+
     protected array $columnExistenceCache = [];
 
     /**
@@ -48,6 +50,13 @@ trait HasBoardRecords
     public function cardsPerColumn(int $count): static
     {
         $this->cardsPerColumn = $count;
+
+        return $this;
+    }
+
+    public function stringColumnIds(bool $condition = true): static
+    {
+        $this->stringColumnIds = $condition;
 
         return $this;
     }
@@ -170,7 +179,9 @@ trait HasBoardRecords
         $formatted = [
             'id' => (string) $record->getKey(),
             'title' => data_get($record, $this->getRecordTitleAttribute()),
-            'column' => data_get($record, $this->getColumnIdentifierAttribute()),
+            'column' => $this->stringColumnIds
+                ? $this->getRecordColumnId($record)
+                : data_get($record, $this->getColumnIdentifierAttribute()),
             'position' => data_get($record, $this->getPositionIdentifierAttribute()),
             'model' => $record,
         ];

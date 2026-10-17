@@ -1,12 +1,13 @@
 @php use Filament\Support\Facades\FilamentAsset; @endphp
 @props(['columns', 'config', 'lanes' => [], 'hasMoreLanes' => false, 'groupings' => []])
 
+<span hidden x-load-css="[@js(FilamentAsset::getStyleHref('flowforge-modern', package: 'relaticle/flowforge'))]"></span>
+
 <div
     class="ff-board w-full h-full flex flex-col relative"
     data-lanes-writable="{{ $config['lanesWritable'] ? 'true' : 'false' }}"
     x-load
     x-load-src="{{ FilamentAsset::getAlpineComponentSrc('flowforge-modern', package: 'relaticle/flowforge') }}"
-    x-load-css="[@js(FilamentAsset::getStyleHref('flowforge-modern', package: 'relaticle/flowforge'))]"
     x-data="flowforgeModern({
         state: {
             columns: @js($columns),
@@ -19,7 +20,7 @@
 >
 
     @unless($config['headerToolbar'] ?? false)
-        @include('flowforge::components.filters')
+        @include('flowforge::modern.components.filters')
     @endunless
 
     @unless ($config['headerToolbar'] ?? false)
