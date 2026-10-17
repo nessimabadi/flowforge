@@ -1,6 +1,7 @@
 @props(['columns', 'lanes', 'config', 'hasMoreLanes'])
 
 @php
+    use Filament\Support\Enums\IconSize;
     use Relaticle\Flowforge\Support\ColorResolver;
     use function Filament\Support\get_color_css_variables;
 
@@ -32,7 +33,7 @@
                 @if ($lane['avatar'])
                     <img src="{{ $lane['avatar'] }}" alt="" class="ff-lane-avatar" />
                 @elseif ($lane['icon'])
-                    <x-filament::icon :icon="$lane['icon']" class="ff-lane-icon" />
+                    <x-filament::icon :icon="$lane['icon']" :size="IconSize::Small" class="ff-lane-icon" />
                 @elseif ($laneColor)
                     <span class="ff-lane-dot" style="{{ get_color_css_variables($laneColor, shades: [500]) }}"></span>
                 @endif

@@ -1,6 +1,7 @@
 @props(['columnId', 'column', 'isCollapsed' => false])
 
 @php
+    use Filament\Support\Enums\IconSize;
     use Relaticle\Flowforge\Support\ColorResolver;
     use function Filament\Support\get_color_css_variables;
 
@@ -30,7 +31,7 @@
         @endif
 
         @if ($column['icon'] ?? null)
-            <x-filament::icon :icon="$column['icon']" class="ff-column-icon" />
+            <x-filament::icon :icon="$column['icon']" :size="IconSize::Small" class="ff-column-icon" />
         @endif
 
         <h3 class="ff-column-title">{{ $column['label'] }}</h3>

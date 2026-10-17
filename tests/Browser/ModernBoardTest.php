@@ -293,6 +293,75 @@ test('app tokens win at every scope', function () {
     $pointer->release();
 });
 
+test('app tokens win at every scope including columns and cells', function () {
+    [, , , $d] = boardSeed();
+    $page = boardPage('/modern/test-board');
+    $pointer = Pointer::on($page);
+
+    $page->script(<<<'JS'
+        (() => {
+            const todo = document.querySelector('[data-column-root="todo"]');
+
+            todo.style.setProperty('--ff-tray-bg', 'rgb(1, 2, 3)');
+            todo.style.setProperty('--ff-accent-tint', 'rgb(9, 8, 7)');
+            document.querySelector('[data-column-root="in_progress"] .ff-tray').style.setProperty('--ff-tray-radius', '5px');
+        })()
+    JS);
+
+    $pointer->wait(300);
+
+    expect(boardStyle($page, '[data-column-root="todo"] .ff-tray', 'background-color'))->toBe('rgb(1, 2, 3)')
+        ->and(boardStyle($page, '[data-column-root="in_progress"] .ff-tray', 'background-color'))->not->toBe('rgb(1, 2, 3)')
+        ->and(boardStyle($page, '[data-column-root="in_progress"] .ff-tray', 'border-top-left-radius'))->toBe('5px');
+
+    $pointer->press(boardCard($d))->glideTo('[data-column-root="todo"] .ff-tray', yFraction: 0.9);
+
+    expect(boardStyle($page, '[data-column-root="todo"] .ff-tray', 'background-color'))->toBe('rgb(9, 8, 7)');
+
+    $pointer->release();
+
+    $grouped = boardPage('/modern/test-grouped-board?groupBy=priority');
+    $grouped->script("document.querySelector('.ff-cell').style.setProperty('--ff-tray-bg', 'rgb(11, 12, 13)')");
+    Pointer::on($grouped)->wait(300);
+
+    expect(boardStyle($grouped, '.ff-cell', 'background-color'))->toBe('rgb(11, 12, 13)');
+});
+
+test('the drag clone keeps tokens set on its own card and column', function () {
+    [, $b, , $d] = boardSeed();
+    $page = boardPage('/modern/test-board');
+    $pointer = Pointer::on($page);
+
+    $page->script(<<<'JS'
+        (() => {
+            const style = document.createElement('style');
+            style.textContent = '.ff-board { --ff-card-bg: rgb(4, 5, 6); }';
+            document.head.append(style);
+            document.querySelector('[data-column-root="in_progress"]').style.setProperty('--ff-card-radius', '7px');
+        })()
+    JS);
+    $page->script("document.querySelector('[data-card-id=\"{$d->id}\"]').style.setProperty('--ff-card-bg', 'rgb(10, 20, 30)')");
+
+    $pointer->press(boardCard($d))->glideTo(boardCard($b), yFraction: 0.25);
+
+    expect(boardStyle($page, 'body > .ff-card[data-dragging] > .ff-card-body', 'background-color'))->toBe('rgb(10, 20, 30)')
+        ->and(boardStyle($page, 'body > .ff-card[data-dragging] > .ff-card-body', 'border-top-left-radius'))->toBe('7px');
+
+    $pointer->release();
+});
+
+test('board icons render at one rem', function () {
+    boardSeed('low');
+    $page = boardPage('/modern/test-contract-board');
+
+    expect(boardStyle($page, '.ff-column-icon', 'width'))->toBe('16px')
+        ->and(boardStyle($page, '.ff-add-row-icon', 'width'))->toBe('16px');
+
+    $lanes = boardPage('/modern/test-contract-board?groupBy=owner');
+
+    expect(boardStyle($lanes, '.ff-lane-icon', 'width'))->toBe('16px');
+});
+
 test('modern assets load on an spa visit', function () {
     [$a, $b, $c, $d] = boardSeed();
     $page = boardPage('/modern/test-classic-board');

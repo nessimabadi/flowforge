@@ -1,6 +1,8 @@
 @props(['columnId', 'cardLabel', 'disabled' => false])
 
 @php
+    use Filament\Support\Enums\IconSize;
+
     $createAction = $this->getBoardCreateCardAction($columnId)?->disabled($disabled);
 @endphp
 
@@ -15,7 +17,7 @@
         @disabled($isDisabled)
         @if ($disabled) title="{{ __('flowforge::flowforge.limit_reached') }}" @endif
     >
-        <x-filament::icon icon="heroicon-m-plus" class="ff-add-row-icon" />
+        <x-filament::icon icon="heroicon-m-plus" :size="IconSize::Small" class="ff-add-row-icon" />
         {{ __('flowforge::flowforge.add_card', ['card' => $cardLabel]) }}
     </button>
 @endif

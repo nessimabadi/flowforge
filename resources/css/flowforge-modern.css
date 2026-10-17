@@ -1,9 +1,25 @@
 @layer properties, theme, base, components, utilities;
 
 @layer components.flowforge {
-    .ff-board,
-    .ff-card,
-    .ff-header {
+    :is(
+        .ff-board,
+        .ff-column,
+        .ff-column-header,
+        .ff-count,
+        .ff-summary,
+        .ff-tray,
+        .ff-card,
+        .ff-card-actions,
+        .ff-add-row,
+        .ff-lanes,
+        .ff-lane-header,
+        .ff-cell,
+        .ff-limit-hint,
+        .ff-card-tag,
+        .ff-card-meta,
+        .ff-card-avatar,
+        .ff-header
+    ) {
         --_text: var(--ff-text, var(--gray-950));
         --_text-muted: var(--ff-text-muted, var(--gray-500));
         --_accent: var(--ff-accent, var(--primary-500));
@@ -13,15 +29,71 @@
         --_duration: var(--ff-duration, 200ms);
     }
 
-    .ff-board {
+    :where(.dark) :is(
+        .ff-board,
+        .ff-column,
+        .ff-column-header,
+        .ff-count,
+        .ff-summary,
+        .ff-tray,
+        .ff-card,
+        .ff-card-actions,
+        .ff-add-row,
+        .ff-lanes,
+        .ff-lane-header,
+        .ff-cell,
+        .ff-limit-hint,
+        .ff-card-tag,
+        .ff-card-meta,
+        .ff-card-avatar,
+        .ff-header
+    ) {
+        --_text: var(--ff-text, #fff);
+        --_text-muted: var(--ff-text-muted, var(--gray-400));
+        --_warning: var(--ff-warning, var(--warning-400));
+    }
+
+    .ff-columns,
+    .ff-lanes-grid,
+    .ff-lanes-heads {
+        --_gap: var(--ff-gap, 1.25rem);
+    }
+
+    .ff-column,
+    .ff-lanes-grid,
+    .ff-lanes-heads {
+        --_column-width: var(--ff-column-width, 300px);
+    }
+
+    .ff-lanes-heads {
         --_surface: var(--ff-surface, var(--gray-50));
+    }
+
+    :where(.dark) .ff-lanes-heads {
+        --_surface: var(--ff-surface, var(--gray-950));
+    }
+
+    .ff-filters-panel {
         --_surface-raised: var(--ff-surface-raised, #fff);
         --_border: var(--ff-border, color-mix(in oklab, var(--gray-950) 5%, transparent));
-        --_gap: var(--ff-gap, 1.25rem);
-        --_column-width: var(--ff-column-width, 300px);
+    }
+
+    :where(.dark) .ff-filters-panel {
+        --_surface-raised: var(--ff-surface-raised, var(--gray-900));
+        --_border: var(--ff-border, color-mix(in oklab, #fff 10%, transparent));
+    }
+
+    .ff-tray,
+    .ff-cell {
         --_accent-tint: var(--ff-accent-tint, var(--primary-50));
         --_tray-bg: var(--ff-tray-bg, var(--ff-surface-sunken, var(--gray-100)));
         --_tray-radius: var(--ff-tray-radius, calc(var(--ff-radius, 0.75rem) + 0.25rem));
+    }
+
+    :where(.dark) .ff-tray,
+    :where(.dark) .ff-cell {
+        --_accent-tint: var(--ff-accent-tint, color-mix(in oklab, var(--primary-500) 10%, transparent));
+        --_tray-bg: var(--ff-tray-bg, var(--ff-surface-sunken, color-mix(in oklab, #fff 5%, transparent)));
     }
 
     .ff-card {
@@ -34,22 +106,6 @@
         --_drag-tilt: var(--ff-drag-tilt, 2.5deg);
         --_drag-shadow: var(--ff-drag-shadow, 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1));
         --_placeholder-border: var(--ff-placeholder-border, var(--_accent));
-    }
-
-    :where(.dark) .ff-board,
-    :where(.dark) .ff-card,
-    :where(.dark) .ff-header {
-        --_text: var(--ff-text, #fff);
-        --_text-muted: var(--ff-text-muted, var(--gray-400));
-        --_warning: var(--ff-warning, var(--warning-400));
-    }
-
-    :where(.dark) .ff-board {
-        --_surface: var(--ff-surface, var(--gray-950));
-        --_surface-raised: var(--ff-surface-raised, var(--gray-900));
-        --_border: var(--ff-border, color-mix(in oklab, #fff 10%, transparent));
-        --_accent-tint: var(--ff-accent-tint, color-mix(in oklab, var(--primary-500) 10%, transparent));
-        --_tray-bg: var(--ff-tray-bg, var(--ff-surface-sunken, color-mix(in oklab, #fff 5%, transparent)));
     }
 
     :where(.dark) .ff-card {
@@ -153,8 +209,6 @@
 
     .ff-column-icon {
         flex-shrink: 0;
-        width: 1rem;
-        height: 1rem;
         color: var(--_text-muted);
     }
 
@@ -266,11 +320,7 @@
         gap: 0.5rem;
         font-size: 0.75rem;
         line-height: 1rem;
-        color: var(--primary-600);
-    }
-
-    :where(.dark) .ff-cards-loading {
-        color: var(--primary-400);
+        color: var(--_accent);
     }
 
     .ff-add-slot {
@@ -285,7 +335,7 @@
         padding: 0.5rem 0.75rem;
         font-size: 0.875rem;
         line-height: 1.25rem;
-        text-align: left;
+        text-align: start;
         color: var(--_text-muted);
         border-radius: 0.5rem;
         transition: color var(--_duration) var(--_ease);
@@ -302,8 +352,6 @@
 
     .ff-add-row-icon {
         flex-shrink: 0;
-        width: 1rem;
-        height: 1rem;
     }
 
     .ff-card {
@@ -349,7 +397,7 @@
 
     .ff-card-title {
         margin: 0;
-        padding-right: 1.5rem;
+        padding-inline-end: 1.5rem;
         font-size: 0.875rem;
         line-height: 1.25rem;
         font-weight: 500;
@@ -363,7 +411,7 @@
     .ff-card-actions {
         position: absolute;
         top: 0.5rem;
-        right: 0.5rem;
+        inset-inline-end: 0.5rem;
     }
 
     @media (hover: hover) {
@@ -571,7 +619,7 @@
     }
 
     .ff-card-avatars-more {
-        padding-left: 0.625rem;
+        padding-inline-start: 0.625rem;
         font-size: 0.75rem;
         line-height: 1rem;
         color: var(--_text-muted);
@@ -619,8 +667,6 @@
     }
 
     .ff-lane-icon {
-        width: 1rem;
-        height: 1rem;
         color: var(--_text-muted);
     }
 
@@ -689,11 +735,7 @@
         margin: 0.25rem 0 0;
         font-size: 0.875rem;
         line-height: 1.25rem;
-        color: var(--gray-600);
-    }
-
-    :where(.dark) .ff-header-subheading {
-        color: var(--gray-400);
+        color: var(--_text-muted);
     }
 
     .ff-header-tools {
@@ -758,11 +800,11 @@
     }
 
     .ff-filters-panel--before {
-        margin-right: 1rem;
+        margin-inline-end: 1rem;
     }
 
     .ff-filters-panel--after {
-        margin-left: 1rem;
+        margin-inline-start: 1rem;
     }
 
     .ff-filters-indicators {

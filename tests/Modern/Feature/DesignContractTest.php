@@ -10,25 +10,46 @@ use Relaticle\Flowforge\Tests\Fixtures\Modern\Task;
 use Relaticle\Flowforge\Tests\Fixtures\Modern\TestContractBoard;
 use Relaticle\Flowforge\Tests\Fixtures\Modern\User;
 
-function contractBoardHtml(): string
+function contractSeed(): void
 {
     $assignee = User::factory()->create(['name' => 'Emma Collins']);
 
-    foreach (['Alpha' => '65535.0000000000', 'Beta' => '131070.0000000000'] as $title => $position) {
+    foreach ([['Alpha', 'todo', 'high', 65535], ['Beta', 'todo', 'low', 131070], ['Gamma', 'in_progress', 'medium', 65535]] as [$title, $status, $priority, $position]) {
         Task::create([
             'title' => $title,
-            'status' => 'todo',
-            'priority' => 'high',
+            'status' => $status,
+            'priority' => $priority,
             'description' => 'Needs a spec',
-            'order_position' => $position,
+            'order_position' => "{$position}.0000000000",
         ])->assignees()->attach($assignee);
     }
+}
 
-    return implode("\n", [
-        Livewire::test(TestContractBoard::class)->html(),
-        Livewire::test(TestContractBoard::class, ['withHeaderToolbar' => true])->html(),
-        Livewire::test(TestContractBoard::class)->set('groupBy', 'priority')->html(),
-    ]);
+function contractRender(array $properties = [], ?string $groupBy = null): string
+{
+    $component = Livewire::test(TestContractBoard::class, $properties);
+
+    return ($groupBy === null ? $component : $component->set('groupBy', $groupBy))->html();
+}
+
+function contractModes(): array
+{
+    return [
+        'flat' => [[]],
+        'toolbar in the header' => [['withHeaderToolbar' => true]],
+        'filters above' => [['filtersLayout' => 'AboveContent']],
+        'filters above, collapsible' => [['filtersLayout' => 'AboveContentCollapsible']],
+        'filters below' => [['filtersLayout' => 'BelowContent']],
+        'filters before' => [['filtersLayout' => 'BeforeContent']],
+        'filters after' => [['filtersLayout' => 'AfterContent']],
+        'filters in a modal' => [['filtersLayout' => 'Modal']],
+        'filters in a dropdown' => [['filtersLayout' => 'Dropdown']],
+        'cards that cannot be dragged' => [['sortable' => false, 'cardActionName' => 'view']],
+        'cards that mount an action' => [['cardActionName' => 'editTask']],
+        'cards that link' => [['cardActionName' => 'view']],
+        'lanes by priority' => [[], 'priority'],
+        'lanes with an avatar, an icon and a colour' => [[], 'owner'],
+    ];
 }
 
 function contractCss(): string
@@ -46,7 +67,7 @@ function contractTokens(): array
     return require __DIR__ . '/../../../resources/design-tokens.php';
 }
 
-function contractClassTokens(string $html): array
+function contractRenderedClasses(string $html): array
 {
     preg_match_all('/(?<![\w:-])class="([^"]*)"/', $html, $matches);
 
@@ -56,62 +77,147 @@ function contractClassTokens(string $html): array
     ))));
 }
 
-test('a modern board renders every documented hook', function (string $hook) {
-    expect(contractBoardHtml())->toMatch('/(?<![\w:-])class="[^"]*(?<![\w-])' . $hook . '(?![\w-])/');
-})->with([
-    'ff-board', 'ff-column', 'ff-column-header', 'ff-count', 'ff-summary', 'ff-tray', 'ff-card',
-    'ff-card-actions', 'ff-add-row', 'ff-lanes', 'ff-lane-header', 'ff-cell', 'ff-limit-hint',
-    'ff-card-tag', 'ff-card-meta', 'ff-card-avatar',
-]);
+const CONTRACT_FLAT_HOOKS = [
+    'ff-board', 'ff-column', 'ff-column-header', 'ff-count', 'ff-summary', 'ff-tray', 'ff-card', 'ff-card-actions',
+    'ff-add-row', 'ff-limit-hint', 'ff-card-tag', 'ff-card-meta', 'ff-card-avatar',
+];
 
-test('a modern board renders the server-side states', function () {
-    $html = contractBoardHtml();
+const CONTRACT_LANE_HOOKS = [
+    'ff-board', 'ff-column', 'ff-column-header', 'ff-count', 'ff-summary', 'ff-lanes', 'ff-lane-header', 'ff-cell',
+    'ff-card', 'ff-card-actions', 'ff-card-tag', 'ff-card-meta', 'ff-card-avatar',
+];
+
+function contractHasHook(string $html, string $hook): bool
+{
+    return preg_match('/(?<![\w:-])class="[^"]*(?<![\w-])' . $hook . '(?![\w-])/', $html) === 1;
+}
+
+test('every documented hook renders in the flat board', function (string $hook) {
+    contractSeed();
+
+    expect(contractHasHook(contractRender(), $hook))->toBeTrue();
+})->with(CONTRACT_FLAT_HOOKS);
+
+test('every documented hook renders in the lane board', function (string $hook) {
+    contractSeed();
+
+    expect(contractHasHook(contractRender(groupBy: 'priority'), $hook))->toBeTrue();
+})->with(CONTRACT_LANE_HOOKS);
+
+test('the flat and lane hooks together are the sixteen documented hooks', function () {
+    expect(array_unique([...CONTRACT_FLAT_HOOKS, ...CONTRACT_LANE_HOOKS]))->toHaveCount(16);
+});
+
+test('a flat board renders the server-side states', function () {
+    contractSeed();
+    $html = contractRender();
 
     expect($html)
         ->toMatch('/<div\s[^>]*class="ff-column"[^>]*\sdata-full[\s>]/')
         ->toMatch('/<div\s[^>]*class="ff-column"[^>]*\sdata-collapsed[\s>]/');
 });
 
-test('a modern board binds the drop state on columns and lane cells', function () {
-    $html = contractBoardHtml();
+test('each board mode binds the drop state', function () {
+    contractSeed();
 
-    expect($html)
-        ->toContain('x-bind:data-drop="columnDrop(')
-        ->toContain('x-bind:data-drop="cellDrop(');
+    expect(contractRender())->toContain('x-bind:data-drop="columnDrop(')
+        ->and(contractRender(groupBy: 'priority'))->toContain('x-bind:data-drop="columnDrop(')->toContain('x-bind:data-drop="cellDrop(');
 });
 
-test('modern markup carries only ff and filament classes', function () {
+test('modern markup carries only ff and filament classes', function (array $properties, ?string $groupBy = null) {
+    contractSeed();
+
     $foreign = array_values(array_filter(
-        contractClassTokens(contractBoardHtml()),
-        fn (string $token): bool => preg_match('/^(?:[a-z-]+:)*(?:ff|fi)-/', $token) !== 1,
+        contractRenderedClasses(contractRender($properties, $groupBy)),
+        fn (string $token): bool => preg_match('/^(?:[a-z0-9-]+:)*(?:ff|fi)-/', $token) !== 1,
     ));
 
     expect($foreign)->toBe([]);
+})->with(contractModes());
+
+test('lane and column icons render', function () {
+    contractSeed();
+
+    expect(contractRender())->toContain('ff-column-icon')
+        ->and(contractRender(groupBy: 'owner'))->toContain('ff-lane-icon')->toContain('ff-lane-avatar')->toContain('ff-lane-dot');
 });
 
-test('modern markup carries no classic classes', function () {
-    expect(contractBoardHtml())->not->toMatch('/(?<![\w:-])class="[^"]*\bflowforge-[a-z]/');
-});
+function contractViewClassTokens(string $source): array
+{
+    $tokens = [];
+    $add = function (string $classes) use (&$tokens): void {
+        $classes = preg_replace('/\{\{.*?\}\}|\{!!.*?!!\}/s', '', $classes);
 
-test('modern view files carry no utility or classic classes', function () {
-    $files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator(__DIR__ . '/../../../resources/views/modern'));
-    $offenders = [];
+        foreach (preg_split('/\s+/', trim($classes), -1, PREG_SPLIT_NO_EMPTY) as $token) {
+            $tokens[] = $token;
+        }
+    };
 
-    foreach ($files as $file) {
-        if (! $file->isFile()) {
-            continue;
+    preg_match_all('/(?<![\w:-])class="([^"]*)"/', $source, $literals);
+    array_map($add, $literals[1]);
+
+    preg_match_all('/(?:@class\(|->class\()/', $source, $calls, PREG_OFFSET_CAPTURE);
+
+    foreach ($calls[0] as [$call, $offset]) {
+        $start = $offset + strlen($call);
+        $depth = 1;
+
+        for ($end = $start; $end < strlen($source) && $depth > 0; $end++) {
+            $depth += match ($source[$end]) {
+                '(' => 1,
+                ')' => -1,
+                default => 0,
+            };
         }
 
-        preg_match_all('/(?<![\w:-])class="([^"]*)"/', file_get_contents($file->getPathname()), $matches);
+        preg_match_all('/\'([^\'\\\\]*)\'|"([^"\\\\]*)"/', substr($source, $start, $end - $start), $strings);
+        array_map($add, array_filter(array_merge($strings[1], $strings[2]), 'strlen'));
+    }
 
-        foreach ($matches[1] as $classes) {
-            if (preg_match('/(?<![\w-])(?:flowforge-|(?:p|px|py|m|mx|my|gap|text|bg|rounded|flex|grid|w|h|size)-|flex\b|grid\b|hidden\b|block\b)/', $classes) === 1) {
-                $offenders[] = basename($file->getPathname()) . ': ' . $classes;
+    preg_match_all('/x-bind:class="\{(.*?)\}"/s', $source, $objects);
+
+    foreach ($objects[1] as $object) {
+        preg_match_all("/'([^']+)'\\s*:/", $object, $keys);
+        array_map($add, $keys[1]);
+    }
+
+    return $tokens;
+}
+
+function contractViewFiles(): array
+{
+    $root = __DIR__ . '/../../../resources/views';
+    $files = [];
+
+    foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator("{$root}/modern")) as $file) {
+        if ($file->isFile()) {
+            $files[] = $file->getPathname();
+        }
+    }
+
+    return [...$files, "{$root}/components/card-avatar.blade.php", "{$root}/components/card-tag.blade.php", "{$root}/components/card-title.blade.php"];
+}
+
+test('every class token in the modern view sources starts with ff or fi', function () {
+    $offenders = [];
+
+    foreach (contractViewFiles() as $path) {
+        foreach (contractViewClassTokens(file_get_contents($path)) as $token) {
+            if (preg_match('/^(?:[a-z0-9-]+:)*(?:ff|fi)-/', $token) !== 1) {
+                $offenders[] = basename($path) . ': ' . $token;
             }
         }
     }
 
     expect($offenders)->toBe([]);
+});
+
+test('the view scan reads class arrays and bind objects', function () {
+    $tokens = contractViewClassTokens(<<<'BLADE'
+        <div class="ff-a" @class(['ff-b', 'p-4' => $x]) x-bind:class="{ 'flex': open }" {{ $attributes->class(['mt-2']) }}>
+        BLADE);
+
+    expect($tokens)->toBe(['ff-a', 'ff-b', 'p-4', 'mt-2', 'flex']);
 });
 
 test('the stylesheet reads exactly the documented variables', function () {

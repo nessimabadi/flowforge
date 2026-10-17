@@ -133,10 +133,9 @@ export default function flowforgeModern({ state }) {
 
         startDrag(event) {
             this.stopTrackingPointer?.();
-            this.markGhost();
-
             this.placeholder = event.item;
             this.placeholder.setAttribute('data-placeholder', '');
+            this.markGhost();
 
             // WebKit turns a fallback-mode drag into a text selection across the board.
             window.getSelection()?.removeAllRanges();
@@ -187,11 +186,11 @@ export default function flowforgeModern({ state }) {
             ghost.setAttribute('data-dragging', '');
             ghost.style.opacity = '1';
 
-            // The fallback clone lives on document.body, outside .ff-board, so it inherits no token set on the board.
-            const board = getComputedStyle(this.$root);
+            // The fallback clone lives on document.body, so it inherits no token from the board or its column.
+            const source = getComputedStyle(this.placeholder);
 
             for (const name of FLOWFORGE_TOKENS) {
-                const value = board.getPropertyValue(name);
+                const value = source.getPropertyValue(name);
 
                 if (value !== '') {
                     ghost.style.setProperty(name, value);
