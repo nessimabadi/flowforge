@@ -22,7 +22,7 @@ test('a modern panel page links the stylesheet once, in the head', function () {
     $html = $this->get('/modern/test-board')->assertOk()->getContent();
     [$head, $body] = explode('</head>', $html, 2);
 
-    expect(preg_match_all('/<link\b[^>]*rel="stylesheet"[^>]*flowforge-modern\.css[^>]*>/i', $head))->toBe(1)
+    expect(preg_match_all('/<link\b[^>]*rel="stylesheet" data-navigate-track[^>]*flowforge-modern\.css[^>]*>/i', $head))->toBe(1)
         ->and($body)->not->toContain('flowforge-modern.css')
         ->and($html)->not->toContain('x-load-css');
 });

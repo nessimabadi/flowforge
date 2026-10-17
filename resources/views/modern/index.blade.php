@@ -1,11 +1,12 @@
 @php
     use Filament\Pages\Page;
     use Filament\Support\Facades\FilamentAsset;
+    use Relaticle\Flowforge\Modern\Concerns\InteractsWithBoard;
 @endphp
 @props(['columns', 'config', 'lanes' => [], 'hasMoreLanes' => false, 'groupings' => []])
 
 <div style="display: contents">
-@unless ($this instanceof Page)
+@unless ($this instanceof Page && in_array(InteractsWithBoard::class, class_uses_recursive($this), true))
     @include('flowforge::modern.stylesheet')
 @endunless
 
