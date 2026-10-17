@@ -40,8 +40,11 @@ final class Pointer
     {
         $selectorJson = json_encode($selector, JSON_THROW_ON_ERROR);
 
+        // Alpine applies x-show on the next animation frame, so a box measured before it can move before the press lands.
         $point = $this->webpage->script(<<<JS
-            (() => {
+            (async () => {
+                await new Promise((resolve) => requestAnimationFrame(resolve));
+
                 const box = document.querySelector({$selectorJson}).getBoundingClientRect();
 
                 return { x: box.left + box.width * {$xFraction}, y: box.top + box.height * {$yFraction} };
