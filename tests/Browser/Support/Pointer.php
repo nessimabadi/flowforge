@@ -18,7 +18,9 @@ final class Pointer
 
     private const STEP_DELAY_MS = 16;
 
-    private const SETTLE_MS = 400;
+    private const TIMEOUT_MS = 10000;
+
+    private const POLL_MS = 100;
 
     /** @var array{x: float, y: float}|null */
     private ?array $position = null;
@@ -72,6 +74,8 @@ final class Pointer
             $this->wait(self::STEP_DELAY_MS);
         }
 
+        $this->untilScript('Boolean(window.Sortable && window.Sortable.active && window.Sortable.ghost)');
+
         return $this->settle();
     }
 
@@ -94,7 +98,24 @@ final class Pointer
 
     public function settle(): self
     {
-        return $this->wait(self::SETTLE_MS);
+        $snapshot = <<<'JS'
+            JSON.stringify([
+                [...document.querySelectorAll('[data-drop]')].map((element) => (element.dataset.columnRoot ?? element.className) + ':' + element.dataset.drop),
+                [...document.querySelectorAll('[data-placeholder]')].map((element) => [element.parentElement?.dataset.columnId, element.parentElement?.dataset.laneId, [...element.parentElement.children].indexOf(element)]),
+            ])
+        JS;
+
+        $previous = null;
+
+        $this->until(function () use ($snapshot, &$previous): bool {
+            $current = $this->webpage->script($snapshot);
+            $settled = $current === $previous;
+            $previous = $current;
+
+            return $settled;
+        }, 'the hover state to stop changing');
+
+        return $this;
     }
 
     public function wait(int $milliseconds): self
@@ -104,17 +125,67 @@ final class Pointer
         return $this;
     }
 
-    public function until(Closure $condition, int $timeoutMilliseconds = 8000): void
+    public function untilScript(string $expression, mixed $expected = true): self
     {
-        for ($waited = 0; $waited < $timeoutMilliseconds; $waited += 100) {
+        $last = null;
+
+        $this->until(function () use ($expression, $expected, &$last): bool {
+            $last = $this->webpage->script($expression);
+
+            return $last === $expected;
+        }, "the script [{$expression}] to return " . json_encode($expected), function () use (&$last): mixed {
+            return $last;
+        });
+
+        return $this;
+    }
+
+    public function untilEquals(Closure $observe, mixed $expected, string $description): self
+    {
+        $last = null;
+
+        return $this->until(function () use ($observe, $expected, &$last): bool {
+            $last = $observe();
+
+            return $last === $expected;
+        }, $description . ' to equal ' . json_encode($expected), function () use (&$last): mixed {
+            return $last;
+        });
+    }
+
+    public function until(Closure $condition, string $description, ?Closure $observed = null): self
+    {
+        for ($waited = 0; $waited < self::TIMEOUT_MS; $waited += self::POLL_MS) {
             if ($condition()) {
-                return;
+                return $this;
             }
 
-            $this->wait(100);
+            $this->wait(self::POLL_MS);
         }
 
-        throw new RuntimeException('Condition not met within ' . $timeoutMilliseconds . 'ms.');
+        throw new RuntimeException(sprintf(
+            'Timed out after %dms waiting for %s. Last observed: %s. Page state: %s',
+            self::TIMEOUT_MS,
+            $description,
+            json_encode($observed?->call($this)),
+            json_encode($this->state()),
+        ));
+    }
+
+    private function state(): mixed
+    {
+        return $this->webpage->script(<<<'JS'
+            ({
+                url: location.href,
+                dragging: document.documentElement.classList.contains('ff-dragging'),
+                sortableActive: Boolean(window.Sortable?.active),
+                sortableDragged: Boolean(window.Sortable?.dragged),
+                ghost: Boolean(window.Sortable?.ghost),
+                drops: [...document.querySelectorAll('[data-drop]')].map((element) => (element.dataset.columnRoot ?? element.className) + ':' + element.dataset.drop),
+                pending: document.querySelectorAll('[data-pending]').length,
+                columns: Object.fromEntries([...document.querySelectorAll('[data-column-id]')].map((element) => [element.dataset.columnId, [...element.querySelectorAll(':scope > [data-card-id]')].map((card) => card.dataset.cardId)])),
+            })
+        JS);
     }
 
     /** @param  array<string, mixed>  $params */

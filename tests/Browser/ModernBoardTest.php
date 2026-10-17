@@ -56,7 +56,21 @@ function boardStyle(AwaitableWebpage $page, string $selector, string $property):
     $selectorJson = json_encode($selector);
     $propertyJson = json_encode($property);
 
-    return $page->script("getComputedStyle(document.querySelector({$selectorJson})).getPropertyValue({$propertyJson})");
+    return $page->script(<<<JS
+        (async () => {
+            const element = document.querySelector({$selectorJson});
+
+            getComputedStyle(element).getPropertyValue({$propertyJson});
+
+            await Promise.all(
+                document.getAnimations()
+                    .filter((animation) => animation instanceof CSSTransition)
+                    .map((animation) => animation.finished.catch(() => null))
+            );
+
+            return getComputedStyle(element).getPropertyValue({$propertyJson});
+        })()
+    JS);
 }
 
 function boardCountRequests(AwaitableWebpage $page): void
@@ -121,13 +135,13 @@ test('a card dropped between two cards keeps its place after a reload', function
     $pointer = Pointer::on($page);
 
     $pointer->drag(boardCard($d), boardCard($b), 0.25);
-    $pointer->until(fn () => boardStored('todo') === [$a->id, $d->id, $b->id, $c->id]);
+    $pointer->untilEquals(fn () => boardStored('todo'), [$a->id, $d->id, $b->id, $c->id], 'the stored todo order');
 
     expect(boardOrder($page, 'todo'))->toBe([$a->id, $d->id, $b->id, $c->id])
         ->and($d->refresh()->status)->toBe('todo');
 
     $page->refresh();
-    $pointer->until(fn () => boardOrder($page, 'todo') === [$a->id, $d->id, $b->id, $c->id]);
+    $pointer->untilEquals(fn () => boardOrder($page, 'todo'), [$a->id, $d->id, $b->id, $c->id], 'the todo order after a reload');
 
     expect(boardOrder($page, 'in_progress'))->toBe([]);
 });
@@ -147,8 +161,8 @@ test('header counts change while a card hovers and stay right after the drop', f
         ->and(boardCount($page, 'completed'))->toBe('0');
 
     $pointer->release();
-    $pointer->until(fn () => boardStored('todo') === [$a->id, $d->id, $b->id, $c->id]);
-    $pointer->until(fn () => boardCount($page, 'todo') === '4' && boardCount($page, 'in_progress') === '0');
+    $pointer->untilEquals(fn () => boardStored('todo'), [$a->id, $d->id, $b->id, $c->id], 'the stored todo order');
+    $pointer->untilEquals(fn () => [boardCount($page, 'todo'), boardCount($page, 'in_progress')], ['4', '0'], 'the todo and in progress counts');
 
     expect(boardCount($page, 'completed'))->toBe('0');
 });
@@ -165,8 +179,8 @@ test('a refused drop returns the card to its index with a message', function () 
     $b->delete();
     $pointer->release();
 
-    $page->assertSee('That card is no longer on the board');
-    $pointer->until(fn () => $page->script("! document.querySelector('[data-pending]')"));
+    $pointer->untilScript('document.body.innerText.includes("That card is no longer on the board")');
+    $pointer->untilScript("! document.querySelector('[data-pending]')");
 
     expect(boardOrder($page, 'todo'))->toBe([$a->id, $b->id, $c->id])
         ->and(boardOrder($page, 'in_progress'))->toBe([$d->id]);
@@ -185,16 +199,19 @@ test('a full column refuses a drop at hover', function () {
         ->assertScript("getComputedStyle(document.querySelector('.ff-limit-hint')).display !== 'none'");
 
     $pointer->release();
-    $pointer->until(fn () => $page->script('! document.documentElement.classList.contains("ff-dragging") && ! document.querySelector("[data-dragging]")'));
+    $pointer->untilScript('! document.documentElement.classList.contains("ff-dragging") && ! document.querySelector("[data-dragging]")');
 
     expect(boardUpdates($page))->toBe($requestsBefore)
         ->and(boardOrder($page, 'todo'))->toBe([$a->id, $b->id, $c->id])
         ->and(boardOrder($page, 'in_progress'))->toBe([$d->id])
         ->and($d->refresh()->status)->toBe('in_progress');
 
-    $pointer->drag(boardCard($a), boardCard($d), 0.25);
-    $pointer->until(fn () => $a->refresh()->status === 'in_progress');
-    $pointer->until(fn () => $page->script('! document.querySelector("[data-pending]")'));
+    $pointer->untilScript('! window.Sortable.active && ! window.Sortable.dragged');
+    $pointer->press(boardCard($a))->glideTo(boardCard($d), yFraction: 0.25);
+    $pointer->untilScript('document.querySelector(\'[data-column-root="in_progress"]\').dataset.drop === "active"');
+    $pointer->release();
+    $pointer->untilEquals(fn () => $a->refresh()->status, 'in_progress', 'the stored status of card A');
+    $pointer->untilScript('! document.querySelector("[data-pending]")');
 
     expect(boardUpdates($page))->toBe($requestsBefore + 1);
 });
@@ -212,7 +229,7 @@ test('a card moves to another lane', function () {
     $pointer = Pointer::on($page);
 
     $pointer->drag(boardCard($lowOne), boardCard($highOne), 0.25);
-    $pointer->until(fn () => $lowOne->refresh()->priority === 'high');
+    $pointer->untilEquals(fn () => $lowOne->refresh()->priority, 'high', 'the stored priority of the moved card');
 
     expect($lowTwo->refresh()->priority)->toBe('low')
         ->and($page->script("[...document.querySelectorAll('[data-lane-id=\"high\"][data-column-id=\"todo\"] > [data-card-id]')].map((card) => Number(card.dataset.cardId))"))
@@ -230,7 +247,7 @@ test('a drag selects no text', function () {
         ->assertScript('window.getSelection().toString() === ""');
 
     $pointer->release();
-    $pointer->until(fn () => $page->script('! document.documentElement.classList.contains("ff-dragging")'));
+    $pointer->untilScript('! document.documentElement.classList.contains("ff-dragging")');
 
     $page->assertScript('window.getSelection().toString() === ""');
 });
@@ -289,8 +306,8 @@ test('dragging sets the documented states', function () {
         ->assertScript('document.querySelector("[data-column-root=\"todo\"]").dataset.drop === "active"');
 
     $pointer->release();
-    $pointer->until(fn () => boardStored('todo') === [$a->id, $d->id, $b->id, $c->id]);
-    $pointer->until(fn () => $page->script('window.__pendingSeen && ! document.querySelector("[data-pending]")'));
+    $pointer->untilEquals(fn () => boardStored('todo'), [$a->id, $d->id, $b->id, $c->id], 'the stored todo order');
+    $pointer->untilScript('window.__pendingSeen && ! document.querySelector("[data-pending]")');
 
     $page->assertScript('document.querySelectorAll("[data-dragging], [data-placeholder], [data-drop], [data-pending]").length === 0');
 });
@@ -308,8 +325,6 @@ test('app tokens win at every scope', function () {
             document.querySelector('.ff-card').style.setProperty('--ff-card-radius', '3px');
         })()
     JS);
-
-    $pointer->wait(500);
 
     expect(boardStyle($page, '.ff-tray', 'background-color'))->toBe('rgb(1, 2, 3)')
         ->and(boardStyle($page, boardCard($b), 'background-color'))->toBe('rgb(4, 5, 6)')
@@ -338,8 +353,6 @@ test('app tokens win at every scope including columns and cells', function () {
         })()
     JS);
 
-    $pointer->wait(300);
-
     expect(boardStyle($page, '[data-column-root="todo"] .ff-tray', 'background-color'))->toBe('rgb(1, 2, 3)')
         ->and(boardStyle($page, '[data-column-root="in_progress"] .ff-tray', 'background-color'))->not->toBe('rgb(1, 2, 3)')
         ->and(boardStyle($page, '[data-column-root="in_progress"] .ff-tray', 'border-top-left-radius'))->toBe('5px');
@@ -352,7 +365,6 @@ test('app tokens win at every scope including columns and cells', function () {
 
     $grouped = boardPage('/modern/test-grouped-board?groupBy=priority');
     $grouped->script("document.querySelector('.ff-cell').style.setProperty('--ff-tray-bg', 'rgb(11, 12, 13)')");
-    Pointer::on($grouped)->wait(300);
 
     expect(boardStyle($grouped, '.ff-cell', 'background-color'))->toBe('rgb(11, 12, 13)');
 });
@@ -399,13 +411,13 @@ test('modern assets load on an spa visit', function () {
     $page->script('window.__spaVisit = true');
 
     $pointer->click('a[href$="/modern/test-board"]');
-    $pointer->until(fn () => $page->script('document.querySelector(".ff-board") !== null'));
+    $pointer->untilScript('document.querySelector(".ff-board") !== null');
 
     $page->assertScript('window.__spaVisit === true')
         ->assertScript('getComputedStyle(document.querySelector(".ff-tray")).backgroundColor !== "rgba(0, 0, 0, 0)"');
 
     $pointer->drag(boardCard($d), boardCard($b), 0.25);
-    $pointer->until(fn () => boardStored('todo') === [$a->id, $d->id, $b->id, $c->id]);
+    $pointer->untilEquals(fn () => boardStored('todo'), [$a->id, $d->id, $b->id, $c->id], 'the stored todo order');
 
     $page->assertNoJavaScriptErrors();
 });
@@ -435,9 +447,9 @@ test('a classic board stays classic after a modern visit', function () {
 
     $page = boardPage('/modern/test-board');
     $pointer = Pointer::on($page);
-    $pointer->until(fn () => $page->script('document.querySelector(".ff-tray") !== null'));
+    $pointer->untilScript('document.querySelector(".ff-tray") !== null');
     $pointer->click('a[href$="/modern/test-classic-board"]');
-    $pointer->until(fn () => $page->script('document.querySelector(".ff-board") === null && document.querySelector("[x-sortable]") !== null'));
+    $pointer->untilScript('document.querySelector(".ff-board") === null && document.querySelector("[x-sortable]") !== null');
 
     $page->assertScript('[...document.styleSheets].some((sheet) => (sheet.href ?? "").includes("flowforge-modern.css"))');
 
@@ -459,8 +471,6 @@ test('the lane header row stays visible while the lanes scroll', function () {
     $page = boardPage('/modern/test-grouped-board?groupBy=priority');
     $pointer = Pointer::on($page);
     $page->script('document.querySelector(".ff-lanes").scrollTop = 700');
-    $pointer->wait(200);
-
     $page->assertScript('document.querySelector(".ff-lanes").scrollTop > 400')
         ->assertScript(<<<'JS'
             (() => {
@@ -495,7 +505,7 @@ test('the board never paints unstyled on a cold load', function () {
 
     PageHandle::navigateWithInitScript($page, '/modern/test-board', boardTraySampler(5000));
 
-    $pointer->until(fn () => count($page->script('window.__trayBackgrounds')) >= 30);
+    $pointer->untilScript('window.__trayBackgrounds.length >= 30');
     $backgrounds = $page->script('window.__trayBackgrounds');
 
     expect($backgrounds[0])->not->toBe('rgba(0, 0, 0, 0)')
@@ -508,13 +518,13 @@ test('the board never paints unstyled on a repeat spa visit', function () {
     $pointer = Pointer::on($page);
 
     $pointer->click('a[href$="/modern/test-board"]');
-    $pointer->until(fn () => $page->script('document.querySelector(".ff-board") !== null'));
+    $pointer->untilScript('document.querySelector(".ff-board") !== null');
     $pointer->click('a[href$="/modern/test-classic-board"]');
-    $pointer->until(fn () => $page->script('document.querySelector(".ff-board") === null && document.querySelector("[x-sortable]") !== null'));
+    $pointer->untilScript('document.querySelector(".ff-board") === null && document.querySelector("[x-sortable]") !== null');
 
     $page->script(boardTraySampler(20000));
     $pointer->click('a[href$="/modern/test-board"]');
-    $pointer->until(fn () => count($page->script('window.__trayBackgrounds')) >= 30);
+    $pointer->untilScript('window.__trayBackgrounds.length >= 30');
     $backgrounds = $page->script('window.__trayBackgrounds');
 
     expect($backgrounds[0])->not->toBe('rgba(0, 0, 0, 0)')
