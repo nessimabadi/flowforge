@@ -39,11 +39,11 @@ test('the variables table matches the token source of truth', function () {
     expect($documented)->toBe(require __DIR__ . '/../../../resources/design-tokens.php');
 });
 
-test('the hooks table lists exactly the sixteen hooks', function () {
+test('the hooks table lists exactly the seventeen hooks', function () {
     $documented = array_map(fn (array $cells): string => trim($cells[0], '`'), designDocsRows('Hooks'));
 
     expect($documented)->toEqualCanonicalizing([
-        'ff-board', 'ff-column', 'ff-column-header', 'ff-count', 'ff-summary', 'ff-tray', 'ff-card', 'ff-card-actions',
+        'ff-board', 'ff-columns', 'ff-column', 'ff-column-header', 'ff-count', 'ff-summary', 'ff-tray', 'ff-card', 'ff-card-actions',
         'ff-add-row', 'ff-lanes', 'ff-lane-header', 'ff-cell', 'ff-limit-hint', 'ff-card-tag', 'ff-card-meta', 'ff-card-avatar',
     ]);
 });

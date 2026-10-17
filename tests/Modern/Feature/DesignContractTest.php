@@ -78,7 +78,7 @@ function contractRenderedClasses(string $html): array
 }
 
 const CONTRACT_FLAT_HOOKS = [
-    'ff-board', 'ff-column', 'ff-column-header', 'ff-count', 'ff-summary', 'ff-tray', 'ff-card', 'ff-card-actions',
+    'ff-board', 'ff-columns', 'ff-column', 'ff-column-header', 'ff-count', 'ff-summary', 'ff-tray', 'ff-card', 'ff-card-actions',
     'ff-add-row', 'ff-limit-hint', 'ff-card-tag', 'ff-card-meta', 'ff-card-avatar',
 ];
 
@@ -104,8 +104,8 @@ test('every documented hook renders in the lane board', function (string $hook) 
     expect(contractHasHook(contractRender(groupBy: 'priority'), $hook))->toBeTrue();
 })->with(CONTRACT_LANE_HOOKS);
 
-test('the flat and lane hooks together are the sixteen documented hooks', function () {
-    expect(array_unique([...CONTRACT_FLAT_HOOKS, ...CONTRACT_LANE_HOOKS]))->toHaveCount(16);
+test('the flat and lane hooks together are the seventeen documented hooks', function () {
+    expect(array_unique([...CONTRACT_FLAT_HOOKS, ...CONTRACT_LANE_HOOKS]))->toHaveCount(17);
 });
 
 test('a flat board renders the server-side states', function () {
