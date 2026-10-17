@@ -7,12 +7,15 @@ use Filament\Support\Assets\Asset;
 use Filament\Support\Assets\Css;
 use Filament\Support\Facades\FilamentAsset;
 use Filament\Support\Facades\FilamentIcon;
+use Filament\Support\Facades\FilamentView;
+use Filament\View\PanelsRenderHook;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Blade;
 use Relaticle\Flowforge\Commands\DiagnosePositionsCommand;
 use Relaticle\Flowforge\Commands\MakeKanbanBoardCommand;
 use Relaticle\Flowforge\Commands\RebalancePositionsCommand;
 use Relaticle\Flowforge\Commands\RepairPositionsCommand;
+use Relaticle\Flowforge\Modern\Concerns\InteractsWithBoard as ModernInteractsWithBoard;
 use Spatie\LaravelPackageTools\Commands\InstallCommand;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
@@ -127,6 +130,29 @@ class FlowforgeServiceProvider extends PackageServiceProvider
             AlpineComponent::make('flowforge-modern', __DIR__ . '/../resources/dist/flowforge-modern.js'),
             Css::make('flowforge-modern', __DIR__ . '/../resources/css/flowforge-modern.css')->loadedOnRequest(),
         ], $this->getAssetPackageName());
+
+        if (class_exists(PanelsRenderHook::class)) {
+            FilamentView::registerRenderHook(
+                PanelsRenderHook::STYLES_AFTER,
+                fn (array $scopes): string => $this->rendersModernBoard($scopes)
+                    ? view('flowforge::modern.stylesheet')->render()
+                    : '',
+            );
+        }
+    }
+
+    /**
+     * @param  array<int, mixed>  $scopes
+     */
+    private function rendersModernBoard(array $scopes): bool
+    {
+        foreach ($scopes as $scope) {
+            if (is_string($scope) && class_exists($scope) && in_array(ModernInteractsWithBoard::class, class_uses_recursive($scope), true)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

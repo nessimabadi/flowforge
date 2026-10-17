@@ -1,8 +1,13 @@
-@php use Filament\Support\Facades\FilamentAsset; @endphp
+@php
+    use Filament\Pages\Page;
+    use Filament\Support\Facades\FilamentAsset;
+@endphp
 @props(['columns', 'config', 'lanes' => [], 'hasMoreLanes' => false, 'groupings' => []])
 
 <div style="display: contents">
-<link rel="stylesheet" href="{{ FilamentAsset::getStyleHref('flowforge-modern', package: 'relaticle/flowforge') }}">
+@unless ($this instanceof Page)
+    @include('flowforge::modern.stylesheet')
+@endunless
 
 <div
     class="ff-board"

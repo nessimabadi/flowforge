@@ -82,6 +82,29 @@ function boardUpdates(AwaitableWebpage $page): int
     return (int) $page->script('window.__updates');
 }
 
+function boardTraySampler(int $budgetMilliseconds): string
+{
+    return <<<JS
+        (() => {
+            window.__trayBackgrounds = [];
+
+            const sample = () => {
+                const tray = document.querySelector('.ff-tray');
+
+                if (tray) {
+                    window.__trayBackgrounds.push(getComputedStyle(tray).backgroundColor);
+                }
+
+                if (window.__trayBackgrounds.length < 30 && performance.now() < {$budgetMilliseconds}) {
+                    requestAnimationFrame(sample);
+                }
+            };
+
+            requestAnimationFrame(sample);
+        })()
+    JS;
+}
+
 beforeEach(function () {
     actingAs(BrowserUser::query()->create(['name' => 'Ada', 'email' => 'ada@example.com', 'password' => 'secret']));
 });
@@ -409,6 +432,8 @@ test('a classic board stays classic after a modern visit', function () {
     $pointer->click('a[href$="/modern/test-classic-board"]');
     $pointer->until(fn () => $page->script('document.querySelector(".ff-board") === null && document.querySelector("[x-sortable]") !== null'));
 
+    $page->assertScript('[...document.styleSheets].some((sheet) => (sheet.href ?? "").includes("flowforge-modern.css"))');
+
     expect(json_decode($page->script($probe), true))->toBe($classic)
         ->and($classic['modernElements'])->toBe(0)
         ->and($classic['modernBehaviour'])->toBeFalse();
@@ -461,29 +486,33 @@ test('the board never paints unstyled on a cold load', function () {
     $page = boardPage('/modern/test-classic-board');
     $pointer = Pointer::on($page);
 
-    PageHandle::navigateWithInitScript($page, '/modern/test-board', <<<'JS'
-        (() => {
-            window.__trayBackgrounds = [];
-
-            const sample = () => {
-                const tray = document.querySelector('.ff-tray');
-
-                if (tray) {
-                    window.__trayBackgrounds.push(getComputedStyle(tray).backgroundColor);
-                }
-
-                if (window.__trayBackgrounds.length < 30 && performance.now() < 5000) {
-                    requestAnimationFrame(sample);
-                }
-            };
-
-            requestAnimationFrame(sample);
-        })()
-    JS);
+    PageHandle::navigateWithInitScript($page, '/modern/test-board', boardTraySampler(5000));
 
     $pointer->until(fn () => count($page->script('window.__trayBackgrounds')) >= 30);
     $backgrounds = $page->script('window.__trayBackgrounds');
 
     expect($backgrounds[0])->not->toBe('rgba(0, 0, 0, 0)')
         ->and($backgrounds[0])->toBe(end($backgrounds));
+});
+
+test('the board never paints unstyled on a repeat spa visit', function () {
+    boardSeed();
+    $page = boardPage('/modern/test-classic-board');
+    $pointer = Pointer::on($page);
+
+    $pointer->click('a[href$="/modern/test-board"]');
+    $pointer->until(fn () => $page->script('document.querySelector(".ff-board") !== null'));
+    $pointer->click('a[href$="/modern/test-classic-board"]');
+    $pointer->until(fn () => $page->script('document.querySelector(".ff-board") === null && document.querySelector("[x-sortable]") !== null'));
+
+    $page->script(boardTraySampler(20000));
+    $pointer->click('a[href$="/modern/test-board"]');
+    $pointer->until(fn () => count($page->script('window.__trayBackgrounds')) >= 30);
+    $backgrounds = $page->script('window.__trayBackgrounds');
+
+    expect($backgrounds[0])->not->toBe('rgba(0, 0, 0, 0)')
+        ->and($backgrounds[0])->toBe(end($backgrounds));
+
+    $page->assertScript('document.head.querySelectorAll(\'link[href*="flowforge-modern.css"]\').length === 1')
+        ->assertScript('document.querySelectorAll(\'link[href*="flowforge-modern.css"]\').length === 1');
 });
