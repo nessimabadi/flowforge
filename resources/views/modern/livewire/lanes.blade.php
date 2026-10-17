@@ -29,7 +29,26 @@
         @foreach ($lanes as $lane)
             @php $laneColor = ColorResolver::resolve($lane['color']); @endphp
 
-            <div class="ff-lane-header" wire:key="lane-{{ $lane['id'] }}">
+            @php
+                $laneKey = (string) $lane['id'];
+                $laneTitleId = 'ff-lane-title-' . $this->getId() . '-' . md5($laneKey);
+            @endphp
+
+            <div
+                class="ff-lane-header"
+                wire:key="lane-{{ $lane['id'] }}"
+                x-bind:data-collapsed="isLaneCollapsed(@js($laneKey))"
+                x-on:click="toggleLane(@js($laneKey))"
+            >
+                <button
+                    type="button"
+                    class="ff-lane-toggle"
+                    aria-labelledby="{{ $laneTitleId }}"
+                    x-bind:aria-expanded="! isLaneCollapsed(@js($laneKey))"
+                >
+                    <x-filament::icon icon="heroicon-m-chevron-down" class="ff-lane-chevron" />
+                </button>
+
                 @if ($lane['avatar'])
                     <img src="{{ $lane['avatar'] }}" alt="" class="ff-lane-avatar" />
                 @elseif ($lane['icon'])
@@ -38,7 +57,7 @@
                     <span class="ff-lane-dot" style="{{ get_color_css_variables($laneColor, shades: [500]) }}"></span>
                 @endif
 
-                <h4 class="ff-lane-title">{{ $lane['label'] }}</h4>
+                <h4 id="{{ $laneTitleId }}" class="ff-lane-title">{{ $lane['label'] }}</h4>
                 <span class="ff-lane-count">{{ $lane['total'] }}</span>
             </div>
 
@@ -47,6 +66,7 @@
 
                 <div
                     class="ff-cell"
+                    x-show="! isLaneCollapsed(@js($laneKey))"
                     x-bind:data-drop="cellDrop(@js((string) $columnId), @js((string) $lane['id']))"
                     wire:key="cell-{{ $lane['id'] }}-{{ $columnId }}"
                 >

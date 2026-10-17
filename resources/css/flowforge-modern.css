@@ -659,11 +659,42 @@
     }
 
     .ff-lane-header {
+        position: sticky;
+        left: 0;
         display: flex;
         grid-column: 1 / -1;
+        justify-self: start;
         align-items: center;
         gap: 0.5rem;
         padding-top: 1rem;
+        cursor: pointer;
+        user-select: none;
+    }
+
+    .ff-lane-toggle {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 1.25rem;
+        height: 1.25rem;
+        margin-inline-start: -0.25rem;
+        color: var(--_text-muted);
+        border-radius: 0.25rem;
+    }
+
+    .ff-lane-toggle:focus-visible {
+        outline: 2px solid var(--_accent);
+        outline-offset: 1px;
+    }
+
+    .ff-lane-chevron {
+        width: 1rem;
+        height: 1rem;
+        transition: rotate var(--_duration) var(--_ease);
+    }
+
+    .ff-lane-header[data-collapsed] .ff-lane-chevron {
+        rotate: -90deg;
     }
 
     .ff-lane-avatar {

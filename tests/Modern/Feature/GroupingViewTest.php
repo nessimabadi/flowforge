@@ -62,6 +62,18 @@ test('choosing a grouping renders a lane per value', function () {
         ->and(laneSegment($html, 'high'))->toContain('High card')->not->toContain('Low card');
 });
 
+test('a lane header carries a toggle named by its title', function () {
+    viewTask('Low card', 'low', '65535.0000000000');
+
+    $html = Livewire::test(TestGroupedBoard::class)->set('groupBy', 'priority')->html();
+
+    preg_match('/aria-labelledby="(ff-lane-title-[^"]+)"/', $html, $toggle);
+
+    expect($toggle)->not->toBeEmpty()
+        ->and($html)->toContain('id="' . $toggle[1] . '" class="ff-lane-title">Low</h4>')
+        ->toContain('x-bind:aria-expanded="! isLaneCollapsed(\'low\')"');
+});
+
 test('lanes label themselves and show their total', function () {
     viewTask('Low one', 'low', '65535.0000000000');
     viewTask('Low two', 'low', '131070.0000000000', 'in_progress');
@@ -306,8 +318,9 @@ test('lane mode runs no flat per column record query', function () {
 test('collapsing empty columns applies to the flat board only', function () {
     viewTask('Low card', 'low', '65535.0000000000');
 
-    Livewire::test(TestGroupedBoard::class, ['collapseEmpty' => true])
-        ->assertSeeHtml('data-collapsed')
-        ->set('groupBy', 'priority')
-        ->assertDontSeeHtml('data-collapsed');
+    $collapsedColumn = '/<div\s+class="ff-column"[^>]*\sdata-collapsed[\s>]/';
+    $component = Livewire::test(TestGroupedBoard::class, ['collapseEmpty' => true]);
+
+    expect($component->html())->toMatch($collapsedColumn)
+        ->and($component->set('groupBy', 'priority')->html())->not->toMatch($collapsedColumn);
 });

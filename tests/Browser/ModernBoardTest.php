@@ -234,6 +234,29 @@ test('the group by menu switches the board to lanes and back', function () {
     expect($page->script("document.querySelector('{$trigger}').innerText.trim()"))->toBe(__('flowforge::flowforge.group_by'));
 });
 
+test('a lane label stays in view while the lanes scroll sideways and collapses its lane', function () {
+    boardSeed('high');
+    $page = boardPage('/modern/test-grouped-board?groupBy=priority')->resize(640, 800);
+    $pointer = Pointer::on($page);
+    $header = '.ff-lane-header';
+    $headerLeft = "Math.round(document.querySelector('{$header}').getBoundingClientRect().left)";
+
+    $restingLeft = $page->script($headerLeft);
+    $page->script("document.querySelector('.ff-lanes').scrollLeft = 400");
+    $pointer->untilScript("document.querySelector('.ff-lanes').scrollLeft > 0");
+
+    expect($page->script($headerLeft))->toBe($restingLeft);
+
+    $pointer->click($header);
+    $pointer->untilScript("document.querySelector('{$header}').hasAttribute('data-collapsed') && [...document.querySelectorAll('[data-lane-id=\"high\"]')].every((cell) => cell.closest('.ff-cell').offsetParent === null)");
+
+    expect($page->script("document.querySelector('{$header} .ff-lane-toggle').getAttribute('aria-expanded')"))->toBe('false');
+
+    $page->script("document.querySelector('{$header} .ff-lane-toggle').focus()");
+    $page->keys("{$header} .ff-lane-toggle", 'Enter');
+    $pointer->untilScript("! document.querySelector('{$header}').hasAttribute('data-collapsed')");
+});
+
 test('a card moves to another lane', function () {
     $rows = [['Low one', 'low', 1000], ['Low two', 'low', 2000], ['High one', 'high', 3000]];
     [$lowOne, $lowTwo, $highOne] = array_map(fn (array $row): Task => Task::query()->create([
