@@ -8,6 +8,7 @@ use Closure;
 use Pest\Browser\Api\AwaitableWebpage;
 use Pest\Browser\Playwright\Client;
 use Pest\Browser\Playwright\Page;
+use ReflectionException;
 use ReflectionProperty;
 use RuntimeException;
 
@@ -128,6 +129,10 @@ final class Pointer
 
     private function guid(): string
     {
-        return (new ReflectionProperty(Page::class, 'guid'))->getValue($this->page);
+        try {
+            return (new ReflectionProperty(Page::class, 'guid'))->getValue($this->page);
+        } catch (ReflectionException $exception) {
+            throw new RuntimeException('The browser plugin no longer keeps the page channel in Page::$guid, so Pointer cannot send mouse input. Update Pointer for the installed pest-plugin-browser.', previous: $exception);
+        }
     }
 }

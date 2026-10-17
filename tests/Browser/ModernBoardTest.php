@@ -177,23 +177,26 @@ test('a full column refuses a drop at hover', function () {
     $page = boardPage('/modern/test-browser-board');
     $pointer = Pointer::on($page);
     boardCountRequests($page);
+    $requestsBefore = boardUpdates($page);
 
     $pointer->press(boardCard($d))->glideTo(boardCard($b), yFraction: 0.25);
 
     $page->assertScript("document.querySelector('[data-column-root=\"todo\"]').dataset.drop === 'blocked'")
         ->assertScript("getComputedStyle(document.querySelector('.ff-limit-hint')).display !== 'none'");
 
-    $pointer->release()->wait(800);
+    $pointer->release();
+    $pointer->until(fn () => $page->script('! document.documentElement.classList.contains("ff-dragging") && ! document.querySelector("[data-dragging]")'));
 
-    expect(boardUpdates($page))->toBe(0)
+    expect(boardUpdates($page))->toBe($requestsBefore)
         ->and(boardOrder($page, 'todo'))->toBe([$a->id, $b->id, $c->id])
         ->and(boardOrder($page, 'in_progress'))->toBe([$d->id])
         ->and($d->refresh()->status)->toBe('in_progress');
 
     $pointer->drag(boardCard($a), boardCard($d), 0.25);
     $pointer->until(fn () => $a->refresh()->status === 'in_progress');
+    $pointer->until(fn () => $page->script('! document.querySelector("[data-pending]")'));
 
-    expect(boardUpdates($page))->toBeGreaterThan(0);
+    expect(boardUpdates($page))->toBe($requestsBefore + 1);
 });
 
 test('a card moves to another lane', function () {
@@ -223,9 +226,13 @@ test('a drag selects no text', function () {
 
     $pointer->press(boardCard($d))->glideTo(boardCard($b))->glideTo('[data-column-root="completed"]');
 
-    $page->assertScript('window.getSelection().toString() === ""');
+    $page->assertScript('document.documentElement.classList.contains("ff-dragging")')
+        ->assertScript('window.getSelection().toString() === ""');
 
     $pointer->release();
+    $pointer->until(fn () => $page->script('! document.documentElement.classList.contains("ff-dragging")'));
+
+    $page->assertScript('window.getSelection().toString() === ""');
 });
 
 test('reduced motion leaves the dragged card untilted', function () {

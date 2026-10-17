@@ -7,13 +7,12 @@ namespace Relaticle\Flowforge\Tests\Browser\Support;
 use Pest\Browser\Api\AwaitableWebpage;
 use Pest\Browser\Playwright\Page;
 use Pest\Browser\Support\ComputeUrl;
-use ReflectionProperty;
 
 final class PageHandle
 {
     public static function of(AwaitableWebpage $webpage): Page
     {
-        return (new ReflectionProperty(AwaitableWebpage::class, 'page'))->getValue($webpage);
+        return $webpage->page();
     }
 
     public static function navigateWithInitScript(AwaitableWebpage $webpage, string $path, string $initScript): void
