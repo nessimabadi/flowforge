@@ -30,9 +30,8 @@ const sortablesAwaitingDrag = new WeakSet();
 
 const sortableIsBusy = () => window.Sortable.active || window.Sortable.dragged;
 
-export default function flowforgeModern({ state }) {
+export default function flowforgeModern() {
     return {
-        state,
         isLoading: {},
         fullyLoaded: {},
         dragOverColumn: null,

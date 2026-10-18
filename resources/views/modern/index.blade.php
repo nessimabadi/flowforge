@@ -15,15 +15,7 @@
     data-lanes-writable="{{ $config['lanesWritable'] ? 'true' : 'false' }}"
     x-load
     x-load-src="{{ FilamentAsset::getAlpineComponentSrc('flowforge-modern', package: 'relaticle/flowforge') }}"
-    x-data="flowforgeModern({
-        state: {
-            columns: @js($columns),
-            titleField: '{{ $config['recordTitleAttribute'] }}',
-            columnField: '{{ $config['columnIdentifierAttribute'] }}',
-            cardLabel: @js($config['cardLabel']),
-            pluralCardLabel: @js($config['pluralCardLabel']),
-        }
-    })"
+    x-data="flowforgeModern()"
 >
 
     @unless($config['headerToolbar'] ?? false)

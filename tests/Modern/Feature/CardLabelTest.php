@@ -60,19 +60,13 @@ describe('card labels', function () {
             ->assertSeeHtml('aria-label="To Do, 0 Tasks"');
     });
 
-    test('serializes custom labels safely into the rendered board', function (string $label): void {
+    test('renders custom labels escaped in the column tray', function (string $label): void {
         Board::configureUsing(
             fn (Board $board): Board => $board->cardLabel($label)->pluralCardLabel($label),
             during: function () use ($label): void {
-                $html = Livewire::test(TestBoard::class)->html();
-                expect(preg_match('/x-data="(flowforgeModern\([\s\S]*?)"/', $html, $attributes))->toBe(1);
-
-                $expression = html_entity_decode($attributes[1], ENT_QUOTES | ENT_HTML5, 'UTF-8');
-
-                foreach (['cardLabel', 'pluralCardLabel'] as $key) {
-                    expect(preg_match("/{$key}:\\s*'((?:[^'\\\\]|\\\\.)*)'/u", $expression, $matches))->toBe(1);
-                    expect(json_decode('"' . $matches[1] . '"', flags: JSON_THROW_ON_ERROR))->toBe($label);
-                }
+                Livewire::test(TestBoard::class)
+                    ->assertSeeHtml('aria-label="To Do, 0 ' . e($label) . '"')
+                    ->assertDontSeeHtml('<New>');
             },
         );
     })->with([
