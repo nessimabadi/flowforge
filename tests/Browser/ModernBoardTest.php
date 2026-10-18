@@ -533,3 +533,14 @@ test('the board never paints unstyled on a repeat spa visit', function () {
     $page->assertScript('document.head.querySelectorAll(\'link[href*="flowforge-modern.css"]\').length === 1')
         ->assertScript('document.querySelectorAll(\'link[href*="flowforge-modern.css"]\').length === 1');
 });
+
+test('a click that drifts a few pixels opens the card action instead of dragging', function () {
+    [$a, $b, $c] = boardSeed();
+    $page = boardPage('/modern/test-draggable-card-action-board');
+    $pointer = Pointer::on($page);
+
+    $pointer->press(boardCard($a) . ' .ff-card-body')->nudge(3, 2)->release();
+    $pointer->untilScript("[...document.querySelectorAll('.fi-modal-window')].some((modal) => modal.checkVisibility())");
+
+    expect(boardStored('todo'))->toBe([$a->id, $b->id, $c->id]);
+});

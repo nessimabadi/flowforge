@@ -82,6 +82,15 @@ final class Pointer
         return $this->settle();
     }
 
+    public function nudge(float $dx, float $dy): self
+    {
+        $from = $this->position ?? throw new RuntimeException('Press before nudging.');
+
+        $this->send('mouseMove', ['x' => $from['x'] + $dx, 'y' => $from['y'] + $dy]);
+
+        return $this;
+    }
+
     public function release(): self
     {
         $this->send('mouseUp', ['button' => 'left', 'clickCount' => 1]);

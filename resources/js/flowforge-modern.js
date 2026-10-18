@@ -72,6 +72,8 @@ export default function flowforgeModern({ state }) {
                 handle: '[x-sortable-handle]',
                 dataIdAttr: 'x-sortable-item',
                 forceFallback: true,
+                // A click that wobbles a few pixels must stay a click; at 0 any pointermove starts a drag.
+                fallbackTolerance: 5,
                 fallbackOnBody: true,
                 fallbackClass: '',
                 ghostClass: '',

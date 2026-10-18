@@ -38,6 +38,7 @@ class ModernPanelProvider extends PanelProvider
                 TestCardActionModalHeadingBoard::class,
                 TestCardActionModalBoard::class,
                 TestCardActionNewTabBoard::class,
+                TestDraggableCardActionBoard::class,
             ])
             ->resources([
                 TestResource::class,
