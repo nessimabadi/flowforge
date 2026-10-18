@@ -640,6 +640,8 @@
 
     .ff-lanes-grid {
         display: grid;
+        width: max-content;
+        min-width: 100%;
         grid-template-columns: repeat(var(--_columns), var(--_column-width));
         column-gap: var(--_gap);
         row-gap: 0.5rem;

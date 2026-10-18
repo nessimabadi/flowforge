@@ -241,9 +241,10 @@ test('a lane label stays in view while the lanes scroll sideways and collapses i
     $header = '.ff-lane-header';
     $headerLeft = "Math.round(document.querySelector('{$header}').getBoundingClientRect().left)";
 
+    $page->script("document.querySelector('.ff-board').style.setProperty('--ff-column-width', '900px')");
     $restingLeft = $page->script($headerLeft);
-    $page->script("document.querySelector('.ff-lanes').scrollLeft = 400");
-    $pointer->untilScript("document.querySelector('.ff-lanes').scrollLeft > 0");
+    $page->script("(() => { const lanes = document.querySelector('.ff-lanes'); lanes.scrollLeft = lanes.scrollWidth; })()");
+    $pointer->untilScript("(() => { const lanes = document.querySelector('.ff-lanes'); return lanes.scrollLeft > 0 && lanes.scrollLeft + lanes.clientWidth >= lanes.scrollWidth - 1; })()");
 
     expect($page->script($headerLeft))->toBe($restingLeft);
 
