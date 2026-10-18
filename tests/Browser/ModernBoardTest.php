@@ -253,6 +253,10 @@ test('a lane label stays in view while the lanes scroll sideways and collapses i
 
     expect($page->script("document.querySelector('{$header} .ff-lane-toggle').getAttribute('aria-expanded')"))->toBe('false');
 
+    $page->script('(async () => { await window.Livewire.all()[0].$wire.$refresh(); })()');
+
+    expect($page->script("document.querySelector('{$header}').hasAttribute('data-collapsed')"))->toBeTrue();
+
     $page->script("document.querySelector('{$header} .ff-lane-toggle').focus()");
     $page->keys("{$header} .ff-lane-toggle", 'Enter');
     $pointer->untilScript("! document.querySelector('{$header}').hasAttribute('data-collapsed')");
