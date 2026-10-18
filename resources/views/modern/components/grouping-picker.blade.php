@@ -1,28 +1,62 @@
 @props(['groupings' => null])
 
 @php
+    use Illuminate\Support\Js;
+
     $groupings ??= array_map(
         fn ($grouping): string => (string) $grouping->getLabel(),
         $this->getBoard()->getGroupings(),
     );
-    $selectId = 'flowforge-group-by-' . $this->getId();
+    $triggerId = 'flowforge-group-by-' . $this->getId();
+    $activeLabel = filled($this->groupBy) ? ($groupings[$this->groupBy] ?? null) : null;
+    $options = ['' => __('flowforge::flowforge.no_grouping')] + $groupings;
 @endphp
 
 @if (count($groupings) > 0)
-    <div {{ $attributes->class(['ff-grouping']) }}>
-        <label for="{{ $selectId }}" class="ff-grouping-label">{{ __('flowforge::flowforge.group_by') }}</label>
-
-        <x-filament::input.wrapper class="ff-grouping-select">
-            <x-filament::input.select
-                :id="$selectId"
-                x-on:change="$wire.$set('groupBy', $event.target.value || null)"
+    <x-filament::dropdown placement="bottom-end" {{ $attributes->class(['ff-grouping']) }}>
+        <x-slot name="trigger">
+            <x-filament::button
+                :id="$triggerId"
+                color="gray"
+                size="sm"
+                icon="heroicon-o-queue-list"
+                :aria-label="$activeLabel ? __('flowforge::flowforge.group_by') . ': ' . $activeLabel : __('flowforge::flowforge.group_by')"
+                :data-grouped="$activeLabel !== null"
+                class="ff-grouping-trigger"
             >
-                <option value="" @selected(blank($this->groupBy))>{{ __('flowforge::flowforge.no_grouping') }}</option>
+                <span class="ff-grouping-label">{{ $activeLabel ?? __('flowforge::flowforge.group_by') }}</span>
 
-                @foreach ($groupings as $name => $label)
-                    <option value="{{ $name }}" @selected($this->groupBy === (string) $name)>{{ $label }}</option>
-                @endforeach
-            </x-filament::input.select>
-        </x-filament::input.wrapper>
-    </div>
+                <x-filament::icon icon="heroicon-m-chevron-down" class="ff-grouping-chevron" />
+            </x-filament::button>
+        </x-slot>
+
+        <x-filament::dropdown.header class="ff-grouping-heading">
+            {{ __('flowforge::flowforge.group_by') }}
+        </x-filament::dropdown.header>
+
+        <x-filament::dropdown.list>
+            @foreach ($options as $name => $label)
+                @php
+                    $isActive = (string) $name === (string) $this->groupBy;
+                    $value = (string) $name === '' ? null : (string) $name;
+                @endphp
+
+                <x-filament::dropdown.list.item
+                    role="menuitemradio"
+                    :aria-checked="$isActive ? 'true' : 'false'"
+                    :color="$isActive ? 'primary' : 'gray'"
+                    x-on:click="close(); $wire.$set('groupBy', {{ Js::from($value) }})"
+                    class="ff-grouping-option"
+                >
+                    {{ $label }}
+
+                    @if ($isActive)
+                        <x-slot name="badge">
+                            <x-filament::icon icon="heroicon-m-check" class="ff-grouping-check" />
+                        </x-slot>
+                    @endif
+                </x-filament::dropdown.list.item>
+            @endforeach
+        </x-filament::dropdown.list>
+    </x-filament::dropdown>
 @endif
