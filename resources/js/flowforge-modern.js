@@ -37,6 +37,7 @@ export default function flowforgeModern() {
         dragOverColumn: null,
         dragOverLane: null,
         dragSource: null,
+        collapsedLanes: {},
         placeholder: null,
         stopTrackingPointer: null,
 
@@ -357,6 +358,14 @@ export default function flowforgeModern() {
 
         setCardState(cardElement, pending) {
             cardElement.toggleAttribute('data-pending', pending);
+        },
+
+        isLaneCollapsed(laneId) {
+            return this.collapsedLanes[laneId] === true;
+        },
+
+        toggleLane(laneId) {
+            this.collapsedLanes[laneId] = ! this.isLaneCollapsed(laneId);
         },
 
         isLoadingColumn(columnId) {

@@ -38,27 +38,27 @@ final class Pointer
     /** @return array{x: float, y: float} */
     public function pointIn(string $selector, float $xFraction = 0.5, float $yFraction = 0.5): array
     {
-        $selectorJson = json_encode($selector, JSON_THROW_ON_ERROR);
+        $box = $this->measure($selector, $xFraction, $yFraction);
 
-        // Alpine applies x-show on the next animation frame, so a box measured before it can move before the press lands.
-        $point = $this->webpage->script(<<<JS
-            (async () => {
-                await new Promise((resolve) => requestAnimationFrame(resolve));
+        if (! $box['found']) {
+            throw new RuntimeException("No element matches {$selector}.");
+        }
 
-                const box = document.querySelector({$selectorJson}).getBoundingClientRect();
-
-                return { x: box.left + box.width * {$xFraction}, y: box.top + box.height * {$yFraction} };
-            })()
-        JS);
-
-        return ['x' => (float) $point['x'], 'y' => (float) $point['y']];
+        return ['x' => $box['x'], 'y' => $box['y']];
     }
 
     public function press(string $selector): self
     {
-        $point = $this->pointIn($selector);
+        $box = null;
 
-        $this->send('mouseMove', $point);
+        // A menu can still be opening or moving into place, so press only a still point that lands on the target.
+        $this->until(function () use ($selector, &$box): bool {
+            $box = $this->measure($selector);
+
+            return $box['hits'];
+        }, "{$selector} to take a press at its centre");
+
+        $this->send('mouseMove', ['x' => $box['x'], 'y' => $box['y']]);
         $this->send('mouseDown', ['button' => 'left', 'clickCount' => 1]);
 
         return $this;
@@ -173,6 +173,39 @@ final class Pointer
             json_encode($observed?->call($this)),
             json_encode($this->state()),
         ));
+    }
+
+    /** @return array{x: float, y: float, found: bool, hits: bool} */
+    private function measure(string $selector, float $xFraction = 0.5, float $yFraction = 0.5): array
+    {
+        $selectorJson = json_encode($selector, JSON_THROW_ON_ERROR);
+
+        // Alpine applies x-show on the next animation frame, so a box measured before it can move before the press lands.
+        $box = $this->webpage->script(<<<JS
+            (async () => {
+                await new Promise((resolve) => requestAnimationFrame(resolve));
+
+                const element = document.querySelector({$selectorJson});
+
+                if (! element) {
+                    return { x: 0, y: 0, found: false, hits: false };
+                }
+
+                const before = element.getBoundingClientRect();
+
+                await new Promise((resolve) => requestAnimationFrame(resolve));
+
+                const box = element.getBoundingClientRect();
+                const stable = ['left', 'top', 'width', 'height'].every((side) => box[side] === before[side]);
+                const x = box.left + box.width * {$xFraction};
+                const y = box.top + box.height * {$yFraction};
+                const hit = document.elementFromPoint(x, y);
+
+                return { x, y, found: true, hits: stable && box.width > 0 && box.height > 0 && hit !== null && element.contains(hit) };
+            })()
+        JS);
+
+        return ['x' => (float) $box['x'], 'y' => (float) $box['y'], 'found' => (bool) $box['found'], 'hits' => (bool) $box['hits']];
     }
 
     private function state(): mixed
