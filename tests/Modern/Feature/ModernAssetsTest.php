@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Filament\Support\Facades\FilamentAsset;
 use Livewire\Livewire;
 use Relaticle\Flowforge\Tests\Fixtures\Modern\BrowserUser;
+use Relaticle\Flowforge\Tests\Fixtures\Modern\Task;
 use Relaticle\Flowforge\Tests\Fixtures\Modern\TestBoard as ModernTestBoard;
 use Relaticle\Flowforge\Tests\Fixtures\Modern\TestStandaloneBoard as ModernStandaloneBoard;
 use Relaticle\Flowforge\Tests\Fixtures\TestBoard as ClassicTestBoard;
@@ -55,4 +56,13 @@ test('a classic board references no modern asset', function () {
 test('the panel assets include no modern asset', function () {
     expect(FilamentAsset::renderStyles(['relaticle/flowforge']))->not->toContain('flowforge-modern')
         ->and(FilamentAsset::renderScripts(['relaticle/flowforge']))->not->toContain('flowforge-modern');
+});
+
+test('a modern board keeps attributes its cards do not show out of the page', function () {
+    Task::query()->create(['title' => 'Shown title', 'description' => 'Never rendered on a card', 'status' => 'todo', 'order_position' => '1000.0000000000']);
+
+    $html = Livewire::test(ModernTestBoard::class)->html();
+
+    expect($html)->toContain('Shown title')
+        ->and($html)->not->toContain('Never rendered on a card');
 });
