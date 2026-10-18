@@ -6,6 +6,7 @@ use Filament\Support\Facades\FilamentView;
 use Filament\View\PanelsRenderHook;
 use Livewire\Livewire;
 use Relaticle\Flowforge\Tests\Fixtures\Modern\TestBoard;
+use Relaticle\Flowforge\Tests\Fixtures\Modern\TestContractBoard;
 
 describe('header toolbar', function () {
     test('renders the page header actions without the header toolbar', function () {
@@ -33,4 +34,12 @@ describe('header toolbar', function () {
         PanelsRenderHook::PAGE_HEADER_ACTIONS_BEFORE,
         PanelsRenderHook::PAGE_HEADER_ACTIONS_AFTER,
     ]);
+
+    test('shows the filter count badge only while a filter is active', function () {
+        $component = Livewire::test(TestContractBoard::class, ['withHeaderToolbar' => true, 'filtersLayout' => 'Dropdown'])
+            ->assertDontSeeHtml('fi-icon-btn-badge-ctn');
+
+        $component->set('tableFilters.priority.value', 'low')
+            ->assertSeeHtml('fi-icon-btn-badge-ctn');
+    });
 });
