@@ -24,7 +24,7 @@
                 :data-grouped="$activeLabel !== null"
                 class="ff-grouping-trigger"
             >
-                {{ $activeLabel ?? __('flowforge::flowforge.group_by') }}
+                <span class="ff-grouping-label">{{ $activeLabel ?? __('flowforge::flowforge.group_by') }}</span>
 
                 <x-filament::icon icon="heroicon-m-chevron-down" class="ff-grouping-chevron" />
             </x-filament::button>

@@ -151,6 +151,16 @@
         padding-bottom: 0.75rem;
     }
 
+    .ff-grouping-trigger {
+        white-space: nowrap;
+    }
+
+    @media (width < 40rem) {
+        .ff-grouping-label {
+            display: none;
+        }
+    }
+
     .ff-grouping-chevron {
         width: 1rem;
         height: 1rem;
