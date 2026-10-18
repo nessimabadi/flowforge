@@ -216,6 +216,52 @@ test('a full column refuses a drop at hover', function () {
     expect(boardUpdates($page))->toBe($requestsBefore + 1);
 });
 
+test('the group by menu switches the board to lanes and back', function () {
+    boardSeed('high');
+    $page = boardPage('/modern/test-grouped-board');
+    $pointer = Pointer::on($page);
+    $trigger = '[id^="flowforge-group-by-"]';
+
+    $pointer->click($trigger)->click('.ff-grouping-option:nth-child(2)');
+    $pointer->untilScript('document.querySelector(\'[data-lane-id="high"]\') !== null');
+
+    expect($page->script("document.querySelector('{$trigger}').innerText.trim()"))->toBe('Priority')
+        ->and($page->script("document.querySelector('{$trigger}').hasAttribute('data-grouped')"))->toBeTrue();
+
+    $pointer->click($trigger)->click('.ff-grouping-option:nth-child(1)');
+    $pointer->untilScript('document.querySelector("[data-lane-id]") === null && document.querySelector(".ff-columns") !== null');
+
+    expect($page->script("document.querySelector('{$trigger}').innerText.trim()"))->toBe(__('flowforge::flowforge.group_by'));
+});
+
+test('a lane label stays in view while the lanes scroll sideways and collapses its lane', function () {
+    boardSeed('high');
+    $page = boardPage('/modern/test-grouped-board?groupBy=priority')->resize(640, 800);
+    $pointer = Pointer::on($page);
+    $header = '.ff-lane-header';
+    $headerLeft = "Math.round(document.querySelector('{$header}').getBoundingClientRect().left)";
+
+    $page->script("document.querySelector('.ff-board').style.setProperty('--ff-column-width', '900px')");
+    $restingLeft = $page->script($headerLeft);
+    $page->script("(() => { const lanes = document.querySelector('.ff-lanes'); lanes.scrollLeft = lanes.scrollWidth; })()");
+    $pointer->untilScript("(() => { const lanes = document.querySelector('.ff-lanes'); return lanes.scrollLeft > 0 && lanes.scrollLeft + lanes.clientWidth >= lanes.scrollWidth - 1; })()");
+
+    expect($page->script($headerLeft))->toBe($restingLeft);
+
+    $pointer->click($header);
+    $pointer->untilScript("document.querySelector('{$header}').hasAttribute('data-collapsed') && [...document.querySelectorAll('[data-lane-id=\"high\"]')].every((cell) => cell.closest('.ff-cell').offsetParent === null)");
+
+    expect($page->script("document.querySelector('{$header} .ff-lane-toggle').getAttribute('aria-expanded')"))->toBe('false');
+
+    $page->script('(async () => { await window.Livewire.all()[0].$wire.$refresh(); })()');
+
+    expect($page->script("document.querySelector('{$header}').hasAttribute('data-collapsed')"))->toBeTrue();
+
+    $page->script("document.querySelector('{$header} .ff-lane-toggle').focus()");
+    $page->keys("{$header} .ff-lane-toggle", 'Enter');
+    $pointer->untilScript("! document.querySelector('{$header}').hasAttribute('data-collapsed')");
+});
+
 test('a card moves to another lane', function () {
     $rows = [['Low one', 'low', 1000], ['Low two', 'low', 2000], ['High one', 'high', 3000]];
     [$lowOne, $lowTwo, $highOne] = array_map(fn (array $row): Task => Task::query()->create([
