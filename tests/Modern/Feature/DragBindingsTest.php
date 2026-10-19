@@ -93,6 +93,6 @@ test('the resting header count is server text a re-render can update', function 
 
     Livewire::test(TestBoard::class, ['todoLimit' => 3])
         ->assertSeeHtml('data-total="2"')
-        ->assertSeeHtml('<span x-show="! dragSource">2/3</span>')
+        ->assertSeeHtml('<span x-show="! dragSource && ! pendingMoves">2/3</span>')
         ->assertSeeHtml("displayCount('todo', Number(\$el.parentElement.dataset.total))");
 });

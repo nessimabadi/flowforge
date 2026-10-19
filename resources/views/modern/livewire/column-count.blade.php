@@ -10,8 +10,8 @@
 <span
     class="ff-count"
     data-total="{{ $total }}"
-><span x-show="! dragSource">{{ $total }}{{ $suffix }}</span><span
+><span x-show="! dragSource && ! pendingMoves">{{ $total }}{{ $suffix }}</span><span
     x-cloak
-    x-show="dragSource"
+    x-show="dragSource || pendingMoves"
     x-text="displayCount(@js((string) $columnId), Number($el.parentElement.dataset.total)) + @js($suffix)"
 ></span></span>

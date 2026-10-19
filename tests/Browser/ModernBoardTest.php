@@ -96,6 +96,79 @@ function boardUpdates(AwaitableWebpage $page): int
     return (int) $page->script('window.__updates');
 }
 
+function boardHoldUpdates(AwaitableWebpage $page): void
+{
+    $page->script(<<<'JS'
+        (() => {
+            const send = window.fetch;
+            const held = [];
+            let holding = true;
+
+            window.fetch = function (...args) {
+                if (! holding || ! String(args[0]?.url ?? args[0]).includes('livewire')) {
+                    return send.apply(this, args);
+                }
+
+                return new Promise((resolve) => held.push(() => resolve(send.apply(this, args))));
+            };
+
+            window.__releaseNextUpdate = () => held.shift()();
+
+            window.__releaseUpdates = () => {
+                holding = false;
+                held.splice(0).forEach((forward) => forward());
+            };
+        })()
+    JS);
+}
+
+function boardReleaseNextUpdate(AwaitableWebpage $page): void
+{
+    $page->script('window.__releaseNextUpdate()');
+}
+
+function boardReleaseUpdates(AwaitableWebpage $page): void
+{
+    $page->script('window.__releaseUpdates()');
+}
+
+function boardPaintedCount(AwaitableWebpage $page, string $column): string
+{
+    $page->script('new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))');
+
+    return boardCount($page, $column);
+}
+
+function boardUntilCountsSettle(Pointer $pointer): void
+{
+    $pointer->untilScript("[...document.querySelectorAll('.ff-count > :first-child')].every((total) => getComputedStyle(total).display !== 'none')");
+}
+
+function boardWatchCounts(AwaitableWebpage $page, array $columns): void
+{
+    $columnsJson = json_encode($columns);
+
+    $page->script(<<<JS
+        (() => {
+            window.__seenCounts = new Set();
+
+            const sample = () => {
+                window.__seenCounts.add({$columnsJson}.map((column) => document.querySelector('[data-column-root="' + column + '"] .ff-count').innerText.trim()).join('/'));
+                requestAnimationFrame(sample);
+            };
+
+            requestAnimationFrame(sample);
+        })()
+    JS);
+}
+
+function boardSeenCounts(AwaitableWebpage $page): array
+{
+    $page->script('new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))');
+
+    return $page->script('[...window.__seenCounts]');
+}
+
 function boardTraySampler(int $budgetMilliseconds): string
 {
     return <<<JS
@@ -165,6 +238,111 @@ test('header counts change while a card hovers and stay right after the drop', f
     $pointer->untilEquals(fn () => [boardCount($page, 'todo'), boardCount($page, 'in_progress')], ['4', '0'], 'the todo and in progress counts');
 
     expect(boardCount($page, 'completed'))->toBe('0');
+});
+
+test('header counts keep the moved values from the drop until the move settles', function () {
+    [$a, $b, $c, $d] = boardSeed();
+    $page = boardPage('/modern/test-board');
+    $pointer = Pointer::on($page);
+    boardHoldUpdates($page);
+
+    $pointer->press(boardCard($d))->glideTo(boardCard($b), yFraction: 0.25);
+    boardWatchCounts($page, ['todo', 'in_progress']);
+    $pointer->release();
+    $pointer->untilScript("document.querySelector('[data-pending]') !== null");
+
+    expect(boardPaintedCount($page, 'todo'))->toBe('4')
+        ->and(boardPaintedCount($page, 'in_progress'))->toBe('0');
+
+    boardReleaseUpdates($page);
+    $pointer->untilScript("! document.querySelector('[data-pending]')");
+
+    expect(boardStored('todo'))->toBe([$a->id, $d->id, $b->id, $c->id])
+        ->and(boardPaintedCount($page, 'todo'))->toBe('4')
+        ->and(boardPaintedCount($page, 'in_progress'))->toBe('0')
+        ->and(boardSeenCounts($page))->toBe(['4/0']);
+});
+
+test('header counts return to the original totals when a held move is refused', function () {
+    [, $b, , $d] = boardSeed();
+    $page = boardPage('/modern/test-board');
+    $pointer = Pointer::on($page);
+    boardHoldUpdates($page);
+
+    $pointer->press(boardCard($b))->glideTo(boardCard($d), yFraction: 0.25);
+    $b->delete();
+    $pointer->release();
+    $pointer->untilScript("document.querySelector('[data-pending]') !== null");
+
+    expect(boardPaintedCount($page, 'todo'))->toBe('2')
+        ->and(boardPaintedCount($page, 'in_progress'))->toBe('2');
+
+    boardReleaseUpdates($page);
+    $pointer->untilScript('document.body.innerText.includes("That card is no longer on the board")');
+    $pointer->untilScript("! document.querySelector('[data-pending]')");
+
+    expect(boardPaintedCount($page, 'todo'))->toBe('3')
+        ->and(boardPaintedCount($page, 'in_progress'))->toBe('1');
+});
+
+test('header counts hold both moves while two drops wait for the server', function () {
+    [$a, $b, , $d] = boardSeed();
+    $page = boardPage('/modern/test-board');
+    $pointer = Pointer::on($page);
+    boardHoldUpdates($page);
+
+    $pointer->press(boardCard($d))->glideTo(boardCard($b), yFraction: 0.25)->release();
+    $pointer->untilScript('! window.Sortable.active && ! window.Sortable.dragged');
+    $pointer->press(boardCard($a))->glideTo('[data-column-root="completed"]');
+    boardWatchCounts($page, ['todo', 'in_progress', 'completed']);
+    $pointer->release();
+    $pointer->untilScript("document.querySelectorAll('[data-pending]').length === 2");
+
+    expect(boardPaintedCount($page, 'todo'))->toBe('3')
+        ->and(boardPaintedCount($page, 'in_progress'))->toBe('0')
+        ->and(boardPaintedCount($page, 'completed'))->toBe('1');
+
+    boardReleaseUpdates($page);
+    $pointer->untilEquals(fn () => boardStored('completed'), [$a->id], 'the stored completed column');
+    boardUntilCountsSettle($pointer);
+
+    expect(boardPaintedCount($page, 'todo'))->toBe('3')
+        ->and(boardPaintedCount($page, 'in_progress'))->toBe('0')
+        ->and(boardPaintedCount($page, 'completed'))->toBe('1')
+        ->and(boardSeenCounts($page))->toBe(['3/0/1']);
+});
+
+test('a refused move gives back only its own counts while another move waits', function () {
+    [$a, $b, , $d] = boardSeed();
+    $page = boardPage('/modern/test-board');
+    $pointer = Pointer::on($page);
+    boardHoldUpdates($page);
+
+    $pointer->press(boardCard($b))->glideTo(boardCard($d), yFraction: 0.25);
+    $b->delete();
+    $pointer->release();
+    $pointer->untilScript('! window.Sortable.active && ! window.Sortable.dragged');
+    $pointer->press(boardCard($a))->glideTo('[data-column-root="completed"]')->release();
+    $pointer->untilScript("document.querySelectorAll('[data-pending]').length === 2");
+
+    expect(boardPaintedCount($page, 'todo'))->toBe('1')
+        ->and(boardPaintedCount($page, 'in_progress'))->toBe('2')
+        ->and(boardPaintedCount($page, 'completed'))->toBe('1');
+
+    boardReleaseNextUpdate($page);
+    $pointer->untilScript("document.querySelectorAll('[data-pending]').length === 1");
+
+    expect(boardPaintedCount($page, 'todo'))->toBe('2')
+        ->and(boardPaintedCount($page, 'in_progress'))->toBe('1')
+        ->and(boardPaintedCount($page, 'completed'))->toBe('1');
+
+    boardReleaseUpdates($page);
+    $pointer->untilEquals(fn () => boardStored('completed'), [$a->id], 'the stored completed column');
+    boardUntilCountsSettle($pointer);
+
+    expect(boardPaintedCount($page, 'todo'))->toBe('1')
+        ->and(boardPaintedCount($page, 'in_progress'))->toBe('1')
+        ->and(boardPaintedCount($page, 'completed'))->toBe('1');
 });
 
 test('a refused drop returns the card to its index with a message', function () {
