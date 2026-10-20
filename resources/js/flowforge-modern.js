@@ -37,6 +37,8 @@ export default function flowforgeModern() {
         dragOverColumn: null,
         dragOverLane: null,
         dragSource: null,
+        pendingCounts: {},
+        pendingMoves: 0,
         collapsedLanes: {},
         placeholder: null,
         stopTrackingPointer: null,
@@ -270,22 +272,62 @@ export default function flowforgeModern() {
         },
 
         displayCount(columnId, total) {
+            const count = this.pendingCounts[columnId] ?? total;
             const source = this.dragSource?.column;
             const target = this.dragOverColumn;
 
             if (!source || !target || source === target || this.isColumnBlocked(target)) {
-                return total;
+                return count;
             }
 
             if (columnId === target) {
-                return total + 1;
+                return count + 1;
             }
 
             if (columnId === source) {
-                return total - 1;
+                return count - 1;
             }
 
-            return total;
+            return count;
+        },
+
+        holdMovedCounts(sourceColumn, targetColumn) {
+            if (sourceColumn === targetColumn) {
+                return () => {};
+            }
+
+            const changes = { [sourceColumn]: -1, [targetColumn]: 1 };
+            let released = false;
+
+            for (const [columnId, change] of Object.entries(changes)) {
+                this.pendingCounts[columnId] = this.renderedCount(columnId) + change;
+            }
+
+            this.pendingMoves++;
+
+            return (refused) => {
+                if (released) {
+                    return;
+                }
+
+                released = true;
+
+                if (refused) {
+                    for (const [columnId, change] of Object.entries(changes)) {
+                        this.pendingCounts[columnId] -= change;
+                    }
+                }
+
+                if (--this.pendingMoves === 0) {
+                    this.pendingCounts = {};
+                }
+            };
+        },
+
+        renderedCount(columnId) {
+            const count = this.$root.querySelector(`[data-column-root="${CSS.escape(columnId)}"] .ff-count`);
+
+            return this.pendingCounts[columnId] ?? Number(count?.dataset.total);
         },
 
         handleSortableEnd(event) {
@@ -334,9 +376,13 @@ export default function flowforgeModern() {
 
             this.setCardState(draggedNode, true);
 
+            const releaseCounts = this.holdMovedCounts(event.from.dataset.columnId, targetColumn);
+
             this.$wire.moveCard(cardId, targetColumn, afterCardId, beforeCardId, fromLane, toLane)
                 .then((moved) => {
                     this.setCardState(draggedNode, false);
+
+                    releaseCounts(moved === false);
 
                     if (moved === false) {
                         this.revertCard(event);
@@ -344,6 +390,7 @@ export default function flowforgeModern() {
                 })
                 .catch(() => {
                     this.setCardState(draggedNode, false);
+                    releaseCounts(true);
                     this.revertCard(event);
                 });
         },
