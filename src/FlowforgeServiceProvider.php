@@ -90,11 +90,8 @@ class FlowforgeServiceProvider extends PackageServiceProvider
     }
 
     /**
-     * Register the views that render Filament Panels components.
-     *
-     * They live outside the default views directory and are only registered when
-     * filament/filament is installed, so `php artisan view:cache` keeps working
-     * for standalone usage of the InteractsWithBoard trait.
+     * Register the views that render Filament panel components.
+     * `view:cache` compiles every registered view, so they load only with filament/filament.
      */
     private function registerPanelViews(): void
     {
